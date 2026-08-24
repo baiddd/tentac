@@ -11,6 +11,7 @@ Rules:
 from __future__ import annotations
 
 import argparse
+import time
 from datetime import datetime, timezone
 
 from models import RawItem
@@ -52,7 +53,56 @@ def fetch_arxiv(source: dict, since: datetime, until: datetime) -> list[RawItem]
     Paginate 100 at a time until published_at < since.
     Rate limit: sleep 3s between calls. arXiv will block you otherwise.
     """
-    raise NotImplementedError
+    import feedparser
+    import httpx
+
+    items: list[RawItem] = []
+    start = 0
+    page_size = 100
+    while True:
+        response = httpx.get(
+            "http://export.arxiv.org/api/query",
+            params={
+                "search_query": f"cat:{source['category']}",
+                "sortBy": "submittedDate",
+                "sortOrder": "descending",
+                "start": start,
+                "max_results": page_size,
+            },
+            follow_redirects=True,
+            timeout=30,
+        )
+        response.raise_for_status()
+        parsed = feedparser.parse(response.text)
+        if not parsed.entries:
+            break
+
+        stop = False
+        for entry in parsed.entries:
+            published_at = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            if published_at < since:
+                stop = True
+                break
+            if published_at >= until:
+                continue
+            arxiv_id = entry.id.rsplit("/abs/", 1)[-1]
+            items.append(
+                RawItem(
+                    source_id=source["id"],
+                    kind="paper",
+                    title=entry.title,
+                    url=entry.id,
+                    published_at=published_at,
+                    summary=entry.get("summary", ""),
+                    authors=[a.name for a in entry.get("authors", [])],
+                    meta={"arxiv_id": arxiv_id},
+                )
+            )
+        if stop or len(parsed.entries) < page_size:
+            break
+        start += page_size
+        time.sleep(3)
+    return items
 
 
 def fetch_hf_daily(source: dict, since: datetime, until: datetime) -> list[RawItem]:
