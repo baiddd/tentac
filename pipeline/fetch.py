@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from models import RawItem
 
@@ -110,7 +110,35 @@ def fetch_hf_daily(source: dict, since: datetime, until: datetime) -> list[RawIt
 
     Keep paper.upvotes and paper.id in meta — score.py needs both.
     """
-    raise NotImplementedError
+    import httpx
+
+    items: list[RawItem] = []
+    day = since
+    while day < until:
+        response = httpx.get(
+            source["url"], params={"date": day.strftime("%Y-%m-%d")}, follow_redirects=True, timeout=30
+        )
+        response.raise_for_status()
+        for entry in response.json():
+            published_at = datetime.fromisoformat(
+                entry["publishedAt"].replace("Z", "+00:00")
+            )
+            if not (since <= published_at < until):
+                continue
+            paper = entry["paper"]
+            items.append(
+                RawItem(
+                    source_id=source["id"],
+                    kind="paper",
+                    title=paper["title"],
+                    url=f"https://huggingface.co/papers/{paper['id']}",
+                    published_at=published_at,
+                    summary=paper.get("summary", ""),
+                    meta={"arxiv_id": paper["id"], "hf_upvotes": entry.get("upvotes", 0)},
+                )
+            )
+        day += timedelta(days=1)
+    return items
 
 
 def fetch_openreview(source: dict, since: datetime, until: datetime) -> list[RawItem]:
