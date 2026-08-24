@@ -40,16 +40,25 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
         normalized_title = re.sub(r"[^\w\s]", "", item.title.lower())
         matched_group = None
         for idx, group in enumerate(groups):
-            group_title = re.sub(r"[^\w\s]", "", group[0].title.lower())
-            if fuzz.token_set_ratio(normalized_title, group_title) >= 92:
-                matched_group = idx
+            for member in group:
+                member_title = re.sub(r"[^\w\s]", "", member.title.lower())
+                if fuzz.token_set_ratio(normalized_title, member_title) >= 92:
+                    matched_group = idx
+                    break
+            if matched_group is not None:
                 break
 
         if matched_group is not None:
             groups[matched_group].append(item)
         else:
-            key_to_group[key] = len(groups)
+            matched_group = len(groups)
             groups.append([item])
+
+        # Register this item's key against the group it landed in, regardless
+        # of whether it founded the group or joined via a near-dupe title —
+        # otherwise a later item with the exact same key would fail to merge
+        # (equivalence-closure gap).
+        key_to_group[key] = matched_group
 
     survivors: list[RawItem] = []
     for group in groups:

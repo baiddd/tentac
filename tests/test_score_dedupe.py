@@ -43,3 +43,34 @@ def test_dedupe_keeps_distinct_items():
     items = [_item("s1", "https://a.com/1", title="A"), _item("s2", "https://a.com/2", title="B")]
     result = dedupe(items)
     assert len(result) == 2
+
+
+def test_dedupe_transitive_chain_collapses_via_equivalence_closure():
+    """A founds a group by dedupe_key. B has a *different* key but a
+    near-dupe title, so it joins A's group via the title path. C shares
+    B's exact dedupe_key but has a title that does NOT near-dupe-match
+    A's (the group founder). All three must still collapse into one
+    group, because B's key must have been registered when it joined —
+    C is identity-equal to B by the exact-key rule even though C's
+    title alone would never match A's.
+    """
+    item_a = _item(
+        "arxiv-cs-cl",
+        "https://arxiv.org/abs/1111.11111",
+        title="Foo: A Novel Architecture",
+        arxiv_id="1111.11111",
+    )
+    item_b = _item(
+        "news-site",
+        "https://news.example.com/story",
+        title="Foo A Novel Architecture",
+    )
+    item_c = _item(
+        "news-site",
+        "https://news.example.com/story",
+        title="Completely Unrelated Headline About Something Else",
+    )
+
+    result = dedupe([item_a, item_b, item_c])
+
+    assert len(result) == 1
