@@ -11,14 +11,37 @@ Rules:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 
 from models import RawItem
 
 
 def fetch_rss(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     """feedparser. Fall back to <updated> when <published> is missing."""
-    raise NotImplementedError
+    import feedparser
+    import httpx
+
+    response = httpx.get(source["url"])
+    parsed = feedparser.parse(response.text)
+    items: list[RawItem] = []
+    for entry in parsed.entries:
+        time_struct = entry.get("published_parsed") or entry.get("updated_parsed")
+        if not time_struct:
+            continue
+        published_at = datetime(*time_struct[:6], tzinfo=timezone.utc)
+        if not (since <= published_at < until):
+            continue
+        items.append(
+            RawItem(
+                source_id=source["id"],
+                kind="article",
+                title=entry.get("title", ""),
+                url=entry.get("link"),
+                published_at=published_at,
+                summary=entry.get("summary", ""),
+            )
+        )
+    return items
 
 
 def fetch_arxiv(source: dict, since: datetime, until: datetime) -> list[RawItem]:
