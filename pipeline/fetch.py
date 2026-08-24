@@ -216,13 +216,89 @@ def fetch_github_advisories(source: dict, since: datetime, until: datetime) -> l
     return items
 
 
+# One selector set per scraped source. Keep every source's selectors here so
+# breakage from a site redesign is visible and repairable in one place.
+SELECTORS: dict[str, dict[str, str]] = {
+    "openai-blog": {
+        "item": "article",
+        "title": "h3",
+        "link": "a",
+        "date": "time",
+    },
+    "meta-ai-blog": {
+        "item": "article",
+        "title": "h3",
+        "link": "a",
+        "date": "time",
+    },
+    "mistral-news": {
+        "item": "article",
+        "title": "h2",
+        "link": "a",
+        "date": "time",
+    },
+    "anthropic-alignment": {
+        "item": "article",
+        "title": "h2",
+        "link": "a",
+        "date": "time",
+    },
+    "deepmind-safety": {
+        "item": "article",
+        "title": "h3",
+        "link": "a",
+        "date": "time",
+    },
+    "uk-aisi": {
+        "item": "article",
+        "title": "h3",
+        "link": "a",
+        "date": "time",
+    },
+}
+
+
 def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     """Last resort for lab blogs with no feed. httpx + selectolax.
 
-    Keep one selector per source in a SELECTORS dict here so breakage is
-    obvious and repairable in one place.
+    Keep one selector per source in a SELECTORS dict in fetch.py so breakage
+    is visible and repairable in one place.
     """
-    raise NotImplementedError
+    from urllib.parse import urljoin
+
+    import httpx
+    from selectolax.parser import HTMLParser
+
+    selectors = SELECTORS[source["id"]]
+    response = httpx.get(source["url"], timeout=30, follow_redirects=True)
+    response.raise_for_status()
+    tree = HTMLParser(response.text)
+
+    items: list[RawItem] = []
+    for node in tree.css(selectors["item"]):
+        title_node = node.css_first(selectors["title"])
+        link_node = node.css_first(selectors["link"])
+        date_node = node.css_first(selectors["date"])
+        if not (title_node and link_node and date_node):
+            continue
+        date_str = date_node.attributes.get("datetime") or date_node.text()
+        try:
+            published_at = datetime.fromisoformat(date_str.strip().replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if not (since <= published_at < until):
+            continue
+        href = link_node.attributes.get("href", "")
+        items.append(
+            RawItem(
+                source_id=source["id"],
+                kind="article",
+                title=title_node.text(strip=True),
+                url=urljoin(source["url"], href),
+                published_at=published_at,
+            )
+        )
+    return items
 
 
 FETCHERS = {
