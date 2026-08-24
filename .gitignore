@@ -1,0 +1,8 @@
+.cache/
+data/raw/
+data/scored/
+__pycache__/
+web/node_modules/
+web/dist/
+.env
+.venv/

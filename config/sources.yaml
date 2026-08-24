@@ -1,0 +1,282 @@
+# =============================================================================
+# sources.yaml — source registry for the weekly AI feed
+#
+# kind: rss | arxiv | api | scrape
+# tier: 1 = always surface if relevant, 2 = normal, 3 = only if strong signal
+# sections: candidate sections. The classifier picks the final one, but a
+#           source's declared sections act as a prior / restrict the choices.
+# =============================================================================
+
+sections:
+  - id: llm
+    label: "LLM & reasoning"
+    blurb: "Models, training, benchmarks, agents"
+  - id: vision
+    label: "Vision & image generation"
+    blurb: "Segmentation, diffusion, video, 3D"
+  - id: multimodal
+    label: "Multimodal & audio"
+    blurb: "VLMs, speech, cross-modal"
+  - id: systems
+    label: "Systems & efficiency"
+    blurb: "Quantization, inference, hardware, RL post-training"
+  - id: science
+    label: "AI for science"
+    blurb: "Biology, materials, climate"
+  - id: security
+    label: "AI security"
+    blurb: "Supply chain, prompt injection, agent vulnerabilities"
+  - id: safety
+    label: "Safety & alignment"
+    blurb: "Evals, interpretability, red-teaming, governance"
+  - id: industry
+    label: "Industry & policy"
+    blurb: "Funding, launches, regulation"
+
+# -----------------------------------------------------------------------------
+# PAPERS
+# -----------------------------------------------------------------------------
+papers:
+  - id: arxiv-cs-cl
+    kind: arxiv
+    category: cs.CL
+    tier: 2
+    sections: [llm, multimodal]
+  - id: arxiv-cs-cv
+    kind: arxiv
+    category: cs.CV
+    tier: 2
+    sections: [vision, multimodal]
+  - id: arxiv-cs-lg
+    kind: arxiv
+    category: cs.LG
+    tier: 2
+    sections: [llm, systems]
+  - id: arxiv-cs-ai
+    kind: arxiv
+    category: cs.AI
+    tier: 2
+    sections: [llm, safety]
+  - id: arxiv-cs-cr
+    kind: arxiv
+    category: cs.CR
+    tier: 2
+    sections: [security, safety]
+  - id: arxiv-eess-iv
+    kind: arxiv
+    category: eess.IV
+    tier: 3
+    sections: [vision]
+
+  - id: hf-daily-papers
+    kind: api
+    url: https://huggingface.co/api/daily_papers
+    tier: 1
+    note: "Pre-curated + carries an upvote signal. Best single popularity proxy."
+    sections: [llm, vision, multimodal, systems]
+
+  - id: openreview
+    kind: api
+    url: https://api2.openreview.net/notes
+    tier: 1
+    cadence: burst          # NeurIPS/ICLR/ICML land in annual waves, not weekly
+    venues: [NeurIPS.cc, ICLR.cc, ICML.cc]
+    note: "Treat as a special edition when a decision wave drops. Do not expect weekly volume."
+    sections: [llm, vision, multimodal, systems]
+
+# -----------------------------------------------------------------------------
+# JOURNALS
+# -----------------------------------------------------------------------------
+journals:
+  - id: nature
+    kind: rss
+    url: https://www.nature.com/nature.rss
+    tier: 1
+    sections: [science]
+  - id: nature-machine-intelligence
+    kind: rss
+    url: https://www.nature.com/natmachintell.rss
+    tier: 1
+    sections: [science, llm]
+  - id: nature-methods
+    kind: rss
+    url: https://www.nature.com/nmeth.rss
+    tier: 2
+    sections: [science]
+  - id: science
+    kind: rss
+    url: https://www.science.org/rss/news_current.xml
+    tier: 1
+    sections: [science]
+  - id: pnas
+    kind: rss
+    url: https://www.pnas.org/rss/current.xml
+    tier: 3
+    sections: [science]
+
+# -----------------------------------------------------------------------------
+# LAB BLOGS
+# -----------------------------------------------------------------------------
+labs:
+  - id: anthropic-news
+    kind: rss
+    url: https://www.anthropic.com/rss.xml
+    tier: 1
+    sections: [llm, safety]
+  - id: openai-blog
+    kind: scrape
+    url: https://openai.com/news/
+    tier: 1
+    sections: [llm, industry]
+  - id: deepmind-blog
+    kind: rss
+    url: https://deepmind.google/blog/rss.xml
+    tier: 1
+    sections: [llm, science]
+  - id: meta-ai-blog
+    kind: scrape
+    url: https://ai.meta.com/blog/
+    tier: 2
+    sections: [llm, vision]
+  - id: mistral-news
+    kind: scrape
+    url: https://mistral.ai/news/
+    tier: 2
+    sections: [llm]
+  - id: hf-blog
+    kind: rss
+    url: https://huggingface.co/blog/feed.xml
+    tier: 2
+    sections: [llm, systems]
+
+# -----------------------------------------------------------------------------
+# NEWS & ANALYSIS
+# -----------------------------------------------------------------------------
+news:
+  - id: ieee-spectrum-ai
+    kind: rss
+    url: https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss
+    tier: 2
+    sections: [industry, systems]
+  - id: mit-tech-review-ai
+    kind: rss
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed
+    tier: 2
+    sections: [industry, safety]
+  - id: ars-technica-ai
+    kind: rss
+    url: https://feeds.arstechnica.com/arstechnica/technology-lab
+    tier: 3
+    sections: [industry, security]
+  - id: techcrunch-ai
+    kind: rss
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    tier: 3
+    sections: [industry]
+  - id: import-ai
+    kind: rss
+    url: https://importai.substack.com/feed
+    tier: 1
+    sections: [llm, safety, industry]
+  - id: the-batch
+    kind: rss
+    url: https://www.deeplearning.ai/the-batch/feed/
+    tier: 2
+    sections: [llm, industry]
+
+# -----------------------------------------------------------------------------
+# SECURITY — fastest-moving section. Vendor research blogs break these first.
+# Reference incidents this section is designed to catch:
+#   - LiteLLM / TeamPCP (Mar 2026): poisoned PyPI releases via a compromised
+#     build-pipeline scanner; ~2,500 orgs and ~434k CI/CD pipelines exposed.
+#   - keyv / cacheable npm worm (Aug 2026): maintainer account takeover, 444
+#     packages, 2,234 poisoned versions; payload persisted in AI coding-agent
+#     and IDE config files that dependency scanners do not read.
+# -----------------------------------------------------------------------------
+security:
+  - id: wiz-blog
+    kind: rss
+    url: https://www.wiz.io/blog/rss.xml
+    tier: 1
+    sections: [security]
+  - id: socket-blog
+    kind: rss
+    url: https://socket.dev/blog/rss.xml
+    tier: 1
+    sections: [security]
+  - id: snyk-blog
+    kind: rss
+    url: https://snyk.io/blog/feed/
+    tier: 2
+    sections: [security]
+  - id: datadog-security-labs
+    kind: rss
+    url: https://securitylabs.datadoghq.com/rss/feed.xml
+    tier: 1
+    sections: [security]
+  - id: aikido-blog
+    kind: rss
+    url: https://www.aikido.dev/blog/rss.xml
+    tier: 2
+    sections: [security]
+  - id: the-hacker-news
+    kind: rss
+    url: https://feeds.feedburner.com/TheHackersNews
+    tier: 3
+    filter_keywords: [ai, llm, npm, pypi, mcp, agent, model, huggingface]
+    sections: [security]
+  - id: bleepingcomputer
+    kind: rss
+    url: https://www.bleepingcomputer.com/feed/
+    tier: 3
+    filter_keywords: [ai, llm, npm, pypi, supply chain, mcp]
+    sections: [security]
+  - id: cisa-advisories
+    kind: rss
+    url: https://www.cisa.gov/cybersecurity-advisories/all.xml
+    tier: 1
+    sections: [security]
+  - id: github-advisories
+    kind: api
+    url: https://api.github.com/graphql
+    tier: 2
+    note: "GraphQL securityAdvisories. Filter ecosystem in (PIP, NPM). Needs GITHUB_TOKEN."
+    sections: [security]
+  - id: osv
+    kind: api
+    url: https://api.osv.dev/v1/query
+    tier: 2
+    note: "Clean package-vuln API. Use to enrich items, not as a discovery feed."
+    sections: [security]
+
+# -----------------------------------------------------------------------------
+# SAFETY & GOVERNANCE — slower cadence, closer to papers than to news
+# -----------------------------------------------------------------------------
+safety:
+  - id: anthropic-alignment
+    kind: scrape
+    url: https://alignment.anthropic.com/
+    tier: 1
+    sections: [safety]
+  - id: deepmind-safety
+    kind: scrape
+    url: https://deepmindsafetyresearch.medium.com/
+    tier: 2
+    sections: [safety]
+  - id: uk-aisi
+    kind: scrape
+    url: https://www.aisi.gov.uk/work
+    tier: 1
+    sections: [safety]
+  - id: nist-ai
+    kind: rss
+    url: https://www.nist.gov/news-events/news/rss.xml
+    tier: 3
+    filter_keywords: [ai, artificial intelligence]
+    sections: [safety, industry]
+  - id: ai-incident-database
+    kind: api
+    url: https://incidentdatabase.ai/api
+    tier: 2
+    note: "Powers the 'incidents this week' callout."
+    sections: [safety, security]
