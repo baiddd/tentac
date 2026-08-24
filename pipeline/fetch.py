@@ -11,6 +11,8 @@ Rules:
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -301,20 +303,77 @@ def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem
     return items
 
 
+def _fetch_api(source: dict, since: datetime, until: datetime) -> list[RawItem]:
+    dispatch = {
+        "hf-daily-papers": fetch_hf_daily,
+        "openreview": fetch_openreview,
+        "github-advisories": fetch_github_advisories,
+    }
+    handler = dispatch.get(source["id"])
+    if handler is None:
+        raise NotImplementedError(f"no api fetcher registered for source {source['id']!r}")
+    return handler(source, since, until)
+
+
 FETCHERS = {
     "rss": fetch_rss,
     "arxiv": fetch_arxiv,
-    "api": None,  # dispatch on source_id -> fetch_hf_daily / fetch_openreview / ...
+    "api": _fetch_api,
     "scrape": fetch_scrape,
 }
 
 
+def _load_sources(only: set[str] | None) -> list[dict]:
+    import yaml
+
+    with open("config/sources.yaml") as f:
+        config = yaml.safe_load(f)
+    sources = []
+    for group in ("papers", "journals", "labs", "news", "security", "safety"):
+        for source in config.get(group, []):
+            if only is None or source["id"] in only:
+                sources.append(source)
+    return sources
+
+
 def main() -> None:
+    from dates import current_week, week_bounds
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--week", help="ISO week, e.g. 2026-W34. Defaults to last complete week.")
     parser.add_argument("--only", help="Comma-separated source ids, for debugging.")
     args = parser.parse_args()
-    raise NotImplementedError
+
+    week = args.week or current_week()
+    since, until = week_bounds(week)
+    only = set(args.only.split(",")) if args.only else None
+
+    sources = _load_sources(only)
+    stats = {"sources_ok": 0, "sources_failed": 0, "items": 0}
+    out_dir = "data/raw"
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = f"{out_dir}/{week}.jsonl"
+
+    with open(out_path, "w") as out:
+        for source in sources:
+            fetcher = FETCHERS.get(source["kind"])
+            if fetcher is None:
+                print(f"[{source['id']}] no fetcher for kind={source['kind']!r}, skipping")
+                stats["sources_failed"] += 1
+                continue
+            try:
+                items = fetcher(source, since, until)
+            except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
+                print(f"[{source['id']}] FAILED: {exc}")
+                stats["sources_failed"] += 1
+                continue
+            for item in items:
+                out.write(item.model_dump_json() + "\n")
+            stats["items"] += len(items)
+            stats["sources_ok"] += 1
+            print(f"[{source['id']}] {len(items)} items")
+
+    print(f"done: {stats}")
 
 
 if __name__ == "__main__":
