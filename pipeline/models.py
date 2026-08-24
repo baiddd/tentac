@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -19,6 +21,22 @@ SectionId = Literal[
 ]
 
 ItemKind = Literal["paper", "article", "release", "advisory", "incident"]
+
+_ARXIV_VERSION_RE = re.compile(r"v\d+$")
+
+
+def _strip_arxiv_version(arxiv_id: str) -> str:
+    return _ARXIV_VERSION_RE.sub("", arxiv_id)
+
+
+def _normalize_url(url: str) -> str:
+    parts = urlsplit(url)
+    netloc = parts.netloc[4:] if parts.netloc.startswith("www.") else parts.netloc
+    query = urlencode(
+        [(k, v) for k, v in parse_qsl(parts.query) if not k.startswith("utm_")]
+    )
+    path = parts.path.rstrip("/") or ""
+    return urlunsplit((parts.scheme, netloc, path, query, ""))
 
 
 class RawItem(BaseModel):
@@ -42,7 +60,13 @@ class RawItem(BaseModel):
         The same paper shows up on arXiv, HF Daily Papers, and a lab blog;
         these must collapse into one item that keeps all three links.
         """
-        raise NotImplementedError
+        if doi := self.meta.get("doi"):
+            return f"doi:{doi}"
+        if arxiv_id := self.meta.get("arxiv_id"):
+            return f"arxiv:{_strip_arxiv_version(arxiv_id)}"
+        if cve_ids := self.meta.get("cve_ids"):
+            return f"cve:{cve_ids[0]}"
+        return f"url:{_normalize_url(str(self.url))}"
 
 
 class ScoredItem(RawItem):
