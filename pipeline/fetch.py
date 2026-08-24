@@ -143,12 +143,77 @@ def fetch_hf_daily(source: dict, since: datetime, until: datetime) -> list[RawIt
 
 def fetch_openreview(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     """Only returns anything during a decision wave. Empty result is normal."""
-    raise NotImplementedError
+    import httpx
+
+    items: list[RawItem] = []
+    for venue in source["venues"]:
+        response = httpx.get(
+            source["url"],
+            params={"invitation": f"{venue}/-/Decision", "limit": 1000},
+            follow_redirects=True,
+            timeout=30,
+        )
+        response.raise_for_status()
+        for note in response.json().get("notes", []):
+            published_at = datetime.fromtimestamp(
+                note["cdate"] / 1000, tz=timezone.utc
+            )
+            if not (since <= published_at < until):
+                continue
+            items.append(
+                RawItem(
+                    source_id=source["id"],
+                    kind="paper",
+                    title=note["content"]["title"]["value"],
+                    url=f"https://openreview.net/forum?id={note['id']}",
+                    published_at=published_at,
+                )
+            )
+    return items
 
 
 def fetch_github_advisories(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     """GraphQL securityAdvisories(ecosystem: PIP|NPM). Needs GITHUB_TOKEN."""
-    raise NotImplementedError
+    import os
+
+    import httpx
+
+    query = """
+    query($ecosystem: SecurityAdvisoryEcosystem!, $since: DateTime!) {
+      securityAdvisories(ecosystem: $ecosystem, first: 100, publishedSince: $since,
+                          orderBy: {field: PUBLISHED_AT, direction: DESC}) {
+        nodes { ghsaId summary publishedAt permalink identifiers { type value } }
+      }
+    }
+    """
+    token = os.environ["GITHUB_TOKEN"]
+    items: list[RawItem] = []
+    for ecosystem in ("PIP", "NPM"):
+        response = httpx.post(
+            source["url"],
+            json={"query": query, "variables": {"ecosystem": ecosystem, "since": since.isoformat()}},
+            headers={"Authorization": f"Bearer {token}"},
+            follow_redirects=True,
+            timeout=30,
+        )
+        response.raise_for_status()
+        nodes = response.json()["data"]["securityAdvisories"]["nodes"]
+        for node in nodes:
+            published_at = datetime.fromisoformat(node["publishedAt"].replace("Z", "+00:00"))
+            if not (since <= published_at < until):
+                continue
+            cve_ids = [i["value"] for i in node["identifiers"] if i["type"] == "CVE"]
+            items.append(
+                RawItem(
+                    source_id=source["id"],
+                    kind="advisory",
+                    title=node["summary"],
+                    url=node["permalink"],
+                    published_at=published_at,
+                    meta={"cve_ids": cve_ids} if cve_ids else {},
+                )
+            )
+    return items
 
 
 def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem]:
