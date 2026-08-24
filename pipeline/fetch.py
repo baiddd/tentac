@@ -21,7 +21,8 @@ def fetch_rss(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     import feedparser
     import httpx
 
-    response = httpx.get(source["url"])
+    response = httpx.get(source["url"], follow_redirects=True, timeout=30)
+    response.raise_for_status()
     parsed = feedparser.parse(response.text)
     items: list[RawItem] = []
     for entry in parsed.entries:
