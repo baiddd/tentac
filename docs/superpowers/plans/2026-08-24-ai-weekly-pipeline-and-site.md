@@ -778,7 +778,7 @@ def test_fetch_openreview_maps_a_decision_note():
                     {
                         "id": "abc123",
                         "content": {"title": {"value": "Accepted Paper"}},
-                        "cdate": 1755561600000,  # 2026-08-19T00:00:00Z in ms
+                        "cdate": 1787097600000,  # 2026-08-19T00:00:00Z in ms
                         "invitation": "NeurIPS.cc/2026/Conference/-/Decision",
                     }
                 ]
