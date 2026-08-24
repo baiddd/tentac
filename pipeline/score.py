@@ -10,6 +10,13 @@ from __future__ import annotations
 from models import RawItem, ScoredItem
 
 
+SOURCE_TIERS: dict[str, int] = {}
+
+
+def _tier(source_id: str) -> int:
+    return SOURCE_TIERS.get(source_id, 3)
+
+
 def dedupe(items: list[RawItem]) -> list[RawItem]:
     """Collapse on dedupe_key, then near-dupe titles.
 
@@ -17,7 +24,44 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
     token_set_ratio >= 92. Keep the item from the highest-tier source and
     push the rest into mirrors.
     """
-    raise NotImplementedError
+    import re
+
+    from rapidfuzz import fuzz
+
+    groups: list[list[RawItem]] = []
+    key_to_group: dict[str, int] = {}
+
+    for item in items:
+        key = item.dedupe_key
+        if key in key_to_group:
+            groups[key_to_group[key]].append(item)
+            continue
+
+        normalized_title = re.sub(r"[^\w\s]", "", item.title.lower())
+        matched_group = None
+        for idx, group in enumerate(groups):
+            group_title = re.sub(r"[^\w\s]", "", group[0].title.lower())
+            if fuzz.token_set_ratio(normalized_title, group_title) >= 92:
+                matched_group = idx
+                break
+
+        if matched_group is not None:
+            groups[matched_group].append(item)
+        else:
+            key_to_group[key] = len(groups)
+            groups.append([item])
+
+    survivors: list[RawItem] = []
+    for group in groups:
+        group.sort(key=lambda i: _tier(i.source_id))
+        winner = group[0]
+        mirrors = [str(i.url) for i in group[1:]]
+        if mirrors:
+            winner = winner.model_copy(
+                update={"meta": {**winner.meta, "mirror_urls": mirrors}}
+            )
+        survivors.append(winner)
+    return survivors
 
 
 def prefilter(items: list[RawItem]) -> list[RawItem]:
