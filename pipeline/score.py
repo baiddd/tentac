@@ -105,11 +105,23 @@ def _is_relevant(item: RawItem) -> bool:
     Body-text matching was tried and rejected: related-work mentions make
     almost every paper's abstract match almost any AI keyword, defeating
     the filter's purpose. The title is what the author chose to foreground.
+
+    Matches on a word boundary (not embedded in a larger alphanumeric
+    token) but tolerates surrounding punctuation and a trailing plural "s"
+    — a naive space-padded substring check misses "RAG:" (colon immediately
+    follows) and "language models" (plural "s" immediately follows), even
+    though both should count as a match.
     """
+    import re
+
     if not RELEVANCE_KEYWORDS:
         return True  # no config loaded (e.g. a caller that skips main()) — don't filter blind
-    padded_title = f" {item.title.lower()} "
-    return any(keyword in padded_title for keyword in RELEVANCE_KEYWORDS)
+    title = item.title.lower()
+    for keyword in RELEVANCE_KEYWORDS:
+        pattern = r"(?<![a-z0-9])" + re.escape(keyword) + r"s?" + r"(?![a-z0-9])"
+        if re.search(pattern, title):
+            return True
+    return False
 
 
 def prefilter(items: list[RawItem]) -> list[RawItem]:

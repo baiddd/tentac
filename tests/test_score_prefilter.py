@@ -79,6 +79,37 @@ def test_prefilter_relevance_keyword_matches_title_not_summary(monkeypatch):
     assert prefilter(items) == []
 
 
+def test_prefilter_relevance_keyword_matches_despite_trailing_punctuation(monkeypatch):
+    """Regression: a naive space-padded substring check misses "RAG:" because
+    a colon, not a space, follows the keyword. The word-boundary regex must
+    tolerate any non-alphanumeric neighbor, not just whitespace."""
+    monkeypatch.setattr("score.SOURCE_TIERS", {"s": 2})
+    monkeypatch.setattr("score._load_seen", lambda: set())
+    monkeypatch.setattr("score.RELEVANCE_KEYWORDS", ["rag"])
+    items = [_item("s", "Trustworthy RAG: An Evaluation Agent for Misinformation")]
+    assert len(prefilter(items)) == 1
+
+
+def test_prefilter_relevance_keyword_does_not_match_inside_larger_word(monkeypatch):
+    """A short keyword like "rag" must not match inside an unrelated word
+    that happens to contain those letters (e.g. "fragrance")."""
+    monkeypatch.setattr("score.SOURCE_TIERS", {"s": 2})
+    monkeypatch.setattr("score._load_seen", lambda: set())
+    monkeypatch.setattr("score.RELEVANCE_KEYWORDS", ["rag"])
+    items = [_item("s", "A Study of Fragrance Perception in Anosmia Patients")]
+    assert prefilter(items) == []
+
+
+def test_prefilter_relevance_keyword_matches_plural_form(monkeypatch):
+    """Regression: "language model" as a keyword must also match the far
+    more common plural "language models" in a title."""
+    monkeypatch.setattr("score.SOURCE_TIERS", {"s": 2})
+    monkeypatch.setattr("score._load_seen", lambda: set())
+    monkeypatch.setattr("score.RELEVANCE_KEYWORDS", ["language model"])
+    items = [_item("s", "Evaluation Awareness in Language Models: Representation and Control")]
+    assert len(prefilter(items)) == 1
+
+
 def test_load_relevance_keywords_from_real_config_is_nonempty():
     """Regression guard: the actual config/sources.yaml must define
     relevance_keywords, or every tier-2/3 arXiv item silently passes

@@ -12,14 +12,21 @@
 # alone (cs.CV, cs.LG, cs.AI, cs.CR) does not imply relevance: most
 # submissions there are narrow domain applications (medical imaging, niche
 # optimization theory) a working AI practitioner has no reason to see in a
-# weekly digest. Matched case-insensitively against the TITLE only (body-text
-# matches are too noisy — related-work mentions fire on almost every paper).
+# weekly digest. Matched against the TITLE only (body-text matches are too
+# noisy — related-work mentions fire on almost every paper), case-insensitive,
+# on a word boundary but tolerant of surrounding punctuation (see
+# pipeline/score.py's _is_relevant — "RAG:" matches "rag" even though a colon
+# immediately follows).
 #
 # Tune this list weekly: if a real item got wrongly dropped, add the phrase
-# that should have caught it; if a section is flooded with noise, remove an
-# over-firing term. Keep entries as multi-word phrases where possible (single
-# words like "agent" or "transformer" match nearly everything and defeat the
-# filter's purpose).
+# that should have caught it (check data/scored/<week>.jsonl against
+# data/prefiltered/<week>.jsonl for the week's known-good items that didn't
+# survive); if a section is flooded with noise, remove an over-firing term.
+# Prefer multi-word phrases — single words like "agent" or "transformer"
+# match nearly everything and defeat the filter's purpose — but note that a
+# short, well-known abbreviation (llm, rag, moe, vlm) is fine on its own
+# specifically because the word-boundary check keeps it from matching inside
+# a larger token.
 relevance_keywords:
   - "chain-of-thought"
   - "diffusion model"
@@ -29,10 +36,10 @@ relevance_keywords:
   - "red-team"
   - "red team"
   - "mixture-of-experts"
-  - " moe "
+  - "moe"
   - "quantization"
   - "retrieval-augmented"
-  - " rag "
+  - "rag"
   - "scaling law"
   - "text-to-image"
   - "text-to-video"
@@ -53,10 +60,10 @@ relevance_keywords:
   - "vision-language model"
   - "foundation model"
   - "large language model"
-  - " llm "
-  - "llm-"
-  - "-llm"
+  - "language model"
+  - "llm"
   - "vlm"
+  - "mllm"
   - "multimodal large language"
 
 sections:
