@@ -7,7 +7,11 @@ Output: data/scored/<week>.jsonl
 
 from __future__ import annotations
 
-from models import RawItem, ScoredItem
+from typing import get_args
+
+from anthropic import Anthropic
+
+from models import RawItem, ScoredItem, SectionId
 
 
 SOURCE_TIERS: dict[str, int] = {}
@@ -110,23 +114,87 @@ def prefilter(items: list[RawItem]) -> list[RawItem]:
     return kept
 
 
+_SCORE_PROMPT = """You are scoring items for a weekly AI digest read by working \
+practitioners. For each item below, decide:
+
+- section: exactly one of {sections}
+- score: 0.0-1.0, "would a working practitioner regret missing this" — not \
+"is this well written"
+- why: <=20 words, the editorial line the reader sees. State what changed, \
+no hedging, no "this paper proposes" framing. Security vs safety: an \
+exploited vulnerability or a live incident is security; an eval, a policy, \
+or interpretability work is safety.
+
+Return a JSON array only, no prose, one object per item:
+[{{"url": "...", "section": "...", "score": 0.0, "why": "..."}}, ...]
+
+Items:
+{items}
+"""
+
+
 def classify_and_score(items: list[RawItem]) -> list[ScoredItem]:
     """One batched LLM call per ~20 items. Ask for strict JSON:
 
         {"url": ..., "section": <SectionId>, "score": 0..1, "why": "<=20 words"}
 
-    Prompt guidance that matters:
-      - score is "would a working practitioner regret missing this", not
-        "is this well written".
-      - security vs safety: an exploited vulnerability or a live incident is
-        security; an eval, a policy, or interpretability work is safety.
-      - `why` is the editorial line the reader sees. No hedging, no "this
-        paper proposes". Say what changed.
-
-    Validate every returned section against SectionId and drop malformed rows
-    rather than trusting the model's output shape.
+    Validate every returned section against SectionId and drop malformed
+    rows rather than trusting the model's output shape.
     """
-    raise NotImplementedError
+    import json
+
+    valid_sections = set(get_args(SectionId))
+    by_url = {str(item.url): item for item in items}
+    client = Anthropic()
+    results: list[ScoredItem] = []
+
+    batch_size = 20
+    for start in range(0, len(items), batch_size):
+        batch = items[start : start + batch_size]
+        if not batch:
+            continue
+        items_text = "\n".join(
+            f"- url: {item.url}\n  title: {item.title}\n  summary: {item.summary[:500]}"
+            for item in batch
+        )
+        prompt = _SCORE_PROMPT.format(sections=sorted(valid_sections), items=items_text)
+        response = client.messages.create(
+            model="claude-sonnet-5",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(block.text for block in response.content if block.type == "text")
+        try:
+            rows = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+
+        for row in rows:
+            url = row.get("url")
+            source_item = by_url.get(url)
+            if source_item is None:
+                continue
+            if row.get("section") not in valid_sections:
+                continue
+            score = row.get("score")
+            if not isinstance(score, (int, float)) or not (0 <= score <= 1):
+                continue
+            why = row.get("why")
+            if not why:
+                continue
+
+            mirror_urls = source_item.meta.get("mirror_urls", [])
+            results.append(
+                ScoredItem(
+                    **source_item.model_dump(exclude={"meta"}),
+                    meta=source_item.meta,
+                    section=row["section"],
+                    score=float(score),
+                    why=why,
+                    mirrors=mirror_urls,
+                )
+            )
+    return results
 
 
 def rank(items: list[ScoredItem]) -> list[ScoredItem]:
