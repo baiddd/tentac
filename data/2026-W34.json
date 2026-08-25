@@ -1,0 +1,92 @@
+{
+  "week": "2026-W34",
+  "starts_on": "2026-08-17T00:00:00Z",
+  "ends_on": "2026-08-24T00:00:00Z",
+  "generated_at": "2026-08-25T15:19:16.991090Z",
+  "headline": "A supply-chain scare in MCP tooling overshadowed a quiet week for new model releases.",
+  "sections": [
+    {
+      "id": "llm",
+      "label": "LLM & reasoning",
+      "blurb": "Models, training, benchmarks, agents",
+      "items": [
+        {
+          "source_id": "sample",
+          "kind": "paper",
+          "title": "Scaling laws for retrieval-augmented reasoning",
+          "url": "https://arxiv.org/abs/2508.01234",
+          "published_at": "2026-08-19T00:00:00Z",
+          "summary": "",
+          "authors": [],
+          "meta": {},
+          "section": "llm",
+          "score": 0.91,
+          "why": "Retrieval quality now matters more than model size past 70B params.",
+          "mirrors": [
+            "https://huggingface.co/papers/2508.01234"
+          ]
+        },
+        {
+          "source_id": "sample",
+          "kind": "release",
+          "title": "Anthropic ships constitutional classifiers v2",
+          "url": "https://www.anthropic.com/news/constitutional-classifiers-v2",
+          "published_at": "2026-08-19T00:00:00Z",
+          "summary": "",
+          "authors": [],
+          "meta": {},
+          "section": "llm",
+          "score": 0.84,
+          "why": "Cuts jailbreak success rate by half with no latency cost.",
+          "mirrors": []
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "label": "AI security",
+      "blurb": "Supply chain, prompt injection, agent vulnerabilities",
+      "items": [
+        {
+          "source_id": "sample",
+          "kind": "advisory",
+          "title": "Poisoned MCP server found in three popular agent templates",
+          "url": "https://www.wiz.io/blog/mcp-server-supply-chain",
+          "published_at": "2026-08-19T00:00:00Z",
+          "summary": "",
+          "authors": [],
+          "meta": {},
+          "section": "security",
+          "score": 0.95,
+          "why": "Exfiltrated API keys via a tool description; patched within 48 hours.",
+          "mirrors": []
+        }
+      ]
+    },
+    {
+      "id": "science",
+      "label": "AI for science",
+      "blurb": "Biology, materials, climate",
+      "items": [
+        {
+          "source_id": "sample",
+          "kind": "paper",
+          "title": "Diffusion model proposes three stable new battery electrolytes",
+          "url": "https://www.nature.com/articles/s41586-026-00042-x",
+          "published_at": "2026-08-19T00:00:00Z",
+          "summary": "",
+          "authors": [],
+          "meta": {},
+          "section": "science",
+          "score": 0.78,
+          "why": "All three synthesized and verified in the same paper — rare for generative chemistry.",
+          "mirrors": []
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "items_seen": 412,
+    "items_kept": 4
+  }
+}
