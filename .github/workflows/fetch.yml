@@ -89,13 +89,10 @@ jobs:
             exit 0
           fi
 
+          body=$(printf 'Fetched and prefiltered automatically \xe2\x80\x94 **no LLM calls made**. To finish this issue:\n\n1. `git fetch && git checkout %s`\n2. Open Claude Code in this repo and run `/weekly-analysis` (see `.claude/skills/weekly-analysis/SKILL.md`) \xe2\x80\x94 it classifies, ranks, and writes the headline directly, no API key needed.\n3. Review the diff, commit, push to this branch.\n4. Merge this PR \xe2\x80\x94 the site deploys automatically.\n' "$branch")
+
           gh pr create \
             --title "Week $week: $item_count items ready for review" \
-            --body "Fetched and prefiltered automatically — **no LLM calls made**. To finish this issue:
-
-1. \`git fetch && git checkout $branch\`
-2. Open Claude Code in this repo and run \`/weekly-analysis\` (see \`.claude/skills/weekly-analysis/SKILL.md\`) — it classifies, ranks, and writes the headline directly, no API key needed.
-3. Review the diff, commit, push to this branch.
-4. Merge this PR — the site deploys automatically." \
+            --body "$body" \
             --base main \
             --head "$branch"
