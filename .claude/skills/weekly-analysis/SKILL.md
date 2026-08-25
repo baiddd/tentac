@@ -81,11 +81,14 @@ to finish the issue before merging the PR.
 
 7. **Build the issue.** Run:
    ```
-   .venv/Scripts/python pipeline/build.py --week <week> --headline "<your headline, escaped for the shell>"
+   .venv/Scripts/python pipeline/build.py --week <week> --headline "<your headline, escaped for the shell>" --analyzed-by "<your model name, e.g. claude-sonnet-5>"
    ```
    This assembles `data/<week>.json` atomically and updates
    `data/index.json` / `data/seen.json` — no LLM call, `--headline` skips
-   `write_headline()` entirely.
+   `write_headline()` entirely. `--analyzed-by` is shown on the site as a
+   small credit line under the AI-summary block — pass your own model
+   name if you know it (check your system prompt/context for it), or omit
+   the flag if you're unsure.
 
 8. **Report to the user.** Summarize: how many items came in prefiltered,
    how many were dropped for dead links (and which ones, briefly), how many

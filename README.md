@@ -1,11 +1,16 @@
-# ai-weekly
+# tentac
 
 **Live site: https://baiddd.github.io/tentac/**
 
 A weekly digest of what happened in AI — papers, journals, lab blogs, and
-security research. No `ANTHROPIC_API_KEY` anywhere: fetching is automated,
-the AI classification step is done locally via Claude Code, and the result
-is reviewed as a normal pull request before it goes live.
+security research, picked and summarized by Claude. No `ANTHROPIC_API_KEY`
+anywhere: fetching is automated, the AI classification step is done
+locally via Claude Code, and the result is reviewed as a normal pull
+request before it goes live.
+
+(The codebase and Python package are still internally named `ai-weekly` —
+that's the pipeline's name, not the site's brand. Only user-facing text
+— page titles, headings, the RSS feed — says "tentac".)
 
 - `config/sources.yaml` — every source, grouped by section, with a tier
 - `pipeline/` — fetch → score → build
