@@ -17,6 +17,7 @@ from models import RawItem, ScoredItem, SectionId
 
 
 SOURCE_TIERS: dict[str, int] = {}
+RELEVANCE_KEYWORDS: list[str] = []
 
 
 def _tier(source_id: str) -> int:
@@ -98,11 +99,38 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
     return survivors
 
 
+
+def _is_relevant(item: RawItem) -> bool:
+    """Title-only match against RELEVANCE_KEYWORDS (config/sources.yaml).
+    Body-text matching was tried and rejected: related-work mentions make
+    almost every paper's abstract match almost any AI keyword, defeating
+    the filter's purpose. The title is what the author chose to foreground.
+
+    Matches on a word boundary (not embedded in a larger alphanumeric
+    token) but tolerates surrounding punctuation and a trailing plural "s"
+    — a naive space-padded substring check misses "RAG:" (colon immediately
+    follows) and "language models" (plural "s" immediately follows), even
+    though both should count as a match.
+    """
+    import re
+
+    if not RELEVANCE_KEYWORDS:
+        return True  # no config loaded (e.g. a caller that skips main()) — don't filter blind
+    title = item.title.lower()
+    for keyword in RELEVANCE_KEYWORDS:
+        pattern = r"(?<![a-z0-9])" + re.escape(keyword) + r"s?" + r"(?![a-z0-9])"
+        if re.search(pattern, title):
+            return True
+    return False
+
+
 def prefilter(items: list[RawItem]) -> list[RawItem]:
     """Cheap cuts before spending any tokens. Target: 400+ -> ~120 items.
 
-    Drop: no abstract, pure survey/benchmark-rehash titles, v2+ arXiv
-    revisions already published in a prior issue (check data/seen.json).
+    Drop: no abstract, v2+ arXiv revisions already published in a prior
+    issue (check data/seen.json), and — for anything without a stronger
+    auto-keep signal — titles that don't match a mainstream-AI keyword
+    (see RELEVANCE_KEYWORDS, loaded from config/sources.yaml).
     Auto-keep: tier 1 sources, anything with a CVE, HF upvotes >= 30.
     """
     seen = _load_seen()
@@ -120,6 +148,8 @@ def prefilter(items: list[RawItem]) -> list[RawItem]:
             kept.append(item)
             continue
         if not item.summary.strip():
+            continue
+        if not _is_relevant(item):
             continue
         kept.append(item)
     return kept
@@ -273,8 +303,20 @@ def _load_source_tiers() -> dict[str, int]:
     return tiers
 
 
+def _load_relevance_keywords() -> list[str]:
+    import os
+
+    import yaml
+
+    if not os.path.exists("config/sources.yaml"):
+        return []
+    with open("config/sources.yaml", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    return [str(keyword).lower() for keyword in config.get("relevance_keywords", [])]
+
+
 def main() -> None:
-    global SOURCE_TIERS
+    global SOURCE_TIERS, RELEVANCE_KEYWORDS
     import os
 
     from dates import week_from_date
@@ -303,6 +345,7 @@ def main() -> None:
     args.week = week_from_date(args.date) if args.date else args.week
 
     SOURCE_TIERS = _load_source_tiers()
+    RELEVANCE_KEYWORDS = _load_relevance_keywords()
 
     if args.stage == "prefilter":
         raw_items: list[RawItem] = []
