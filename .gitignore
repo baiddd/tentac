@@ -6,3 +6,5 @@ web/dist/
 .venv/
 PLAN.md
 docs/superpowers/
+
+.claude/skills/weekly-analysis/
