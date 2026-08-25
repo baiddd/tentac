@@ -80,3 +80,19 @@ def test_classify_and_score_batches_by_twenty(mock_anthropic_cls):
     classify_and_score(items)
 
     assert mock_client.messages.create.call_count == 3
+
+
+@patch("score.Anthropic")
+def test_classify_and_score_handles_non_list_json_response(mock_anthropic_cls):
+    mock_client = MagicMock()
+    mock_anthropic_cls.return_value = mock_client
+    # Mock a response that returns a JSON object instead of a list
+    response = MagicMock()
+    response.content = [MagicMock(type="text", text=json.dumps({"error": "rate limited"}))]
+    mock_client.messages.create.return_value = response
+
+    items = [_item("https://example.com/a")]
+    result = classify_and_score(items)
+
+    # Should return empty list instead of raising an exception
+    assert result == []

@@ -169,7 +169,14 @@ def classify_and_score(items: list[RawItem]) -> list[ScoredItem]:
         except json.JSONDecodeError:
             continue
 
+        # Guard against non-list JSON responses (e.g., {"error": "..."} or null)
+        if not isinstance(rows, list):
+            continue
+
         for row in rows:
+            # Guard against non-dict rows (e.g., strings or other types in the list)
+            if not isinstance(row, dict):
+                continue
             url = row.get("url")
             source_item = by_url.get(url)
             if source_item is None:
