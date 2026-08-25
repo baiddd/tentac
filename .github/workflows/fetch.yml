@@ -73,6 +73,15 @@ jobs:
             exit 0
           fi
 
+          # Check BEFORE doing any work: if the branch already exists on
+          # origin, a PR is presumably already open and may already carry
+          # hand-written data/scored/, data/<week>.json, etc. from a human
+          # running the weekly-analysis skill. Never force-push over that.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "branch $branch already exists on origin — assuming a PR is already in progress, not touching it"
+            exit 0
+          fi
+
           git checkout -b "$branch"
           git add "$raw_path" "$prefiltered_path"
           if git diff --staged --quiet; then
@@ -82,12 +91,7 @@ jobs:
 
           item_count=$(wc -l < "$prefiltered_path" | tr -d ' ')
           git commit -m "fetch: $week ($item_count items ready for review)"
-          git push -u origin "$branch" --force
-
-          if gh pr view "$branch" >/dev/null 2>&1; then
-            echo "PR for $branch already exists, updated its branch"
-            exit 0
-          fi
+          git push -u origin "$branch"
 
           body=$(printf 'Fetched and prefiltered automatically \xe2\x80\x94 **no LLM calls made**. To finish this issue:\n\n1. `git fetch && git checkout %s`\n2. Open Claude Code in this repo and run `/weekly-analysis` (see `.claude/skills/weekly-analysis/SKILL.md`) \xe2\x80\x94 it classifies, ranks, and writes the headline directly, no API key needed.\n3. Review the diff, commit, push to this branch.\n4. Merge this PR \xe2\x80\x94 the site deploys automatically.\n' "$branch")
 
