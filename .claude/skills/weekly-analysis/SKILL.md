@@ -74,21 +74,31 @@ to finish the issue before merging the PR.
    caps items per section — pure code, no LLM, don't try to do this step
    yourself.
 
-6. **Write the headline.** Read the ranked `data/scored/<week>.jsonl`,
-   look at the top ~10 items by score, and write one sentence: no hype, no
-   "X: Y" colon-subtitle construction. If nothing stands out, say plainly
-   that the week was quiet.
+6. **Write the headline and a per-section summary.** Read the ranked
+   `data/scored/<week>.jsonl`, group by `section`. Write:
+   - One overall headline sentence (top ~10 items across all sections): no
+     hype, no "X: Y" colon-subtitle construction. If nothing stands out,
+     say plainly that the week was quiet.
+   - One short sentence per section that ended up with items, recapping
+     what that section's items add up to this week (not just restating
+     one item's `why` — synthesize across the section). Skip sections
+     with zero items entirely; don't write a summary for an empty
+     section.
 
-7. **Build the issue.** Run:
+7. **Build the issue.** Run (escaping quotes for your shell as needed):
    ```
-   .venv/Scripts/python pipeline/build.py --week <week> --headline "<your headline, escaped for the shell>" --analyzed-by "<your model name, e.g. claude-sonnet-5>"
+   .venv/Scripts/python pipeline/build.py --week <week> --headline "<your headline>" --analyzed-by "<your model name, e.g. claude-sonnet-5>" --section-summaries '{"llm": "<...>", "security": "<...>"}'
    ```
    This assembles `data/<week>.json` atomically and updates
    `data/index.json` / `data/seen.json` — no LLM call, `--headline` skips
    `write_headline()` entirely. `--analyzed-by` is shown on the site as a
    small credit line under the AI-summary block — pass your own model
    name if you know it (check your system prompt/context for it), or omit
-   the flag if you're unsure.
+   the flag if you're unsure. `--section-summaries` takes a JSON object
+   keyed by section id (only include keys for sections that actually have
+   items this week); each value renders under that section's heading on
+   the site. Omit the flag entirely if you'd rather skip per-section
+   summaries for this run — sections just render without one.
 
 8. **Report to the user.** Summarize: how many items came in prefiltered,
    how many were dropped for dead links (and which ones, briefly), how many

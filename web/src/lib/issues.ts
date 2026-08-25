@@ -18,6 +18,7 @@ export interface SectionData {
   label: string;
   blurb: string;
   items: ScoredItemData[];
+  summary?: string;
 }
 
 export interface IssueData {

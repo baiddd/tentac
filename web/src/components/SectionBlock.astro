@@ -10,5 +10,6 @@ const { section } = Astro.props;
 <section class="section-block">
   <h2>{section.label}</h2>
   <p class="blurb">{section.blurb}</p>
+  {section.summary && <p class="section-summary">{section.summary}</p>}
   {section.items.map((item) => <ItemCard item={item} sectionId={section.id} />)}
 </section>

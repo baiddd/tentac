@@ -40,7 +40,8 @@
           "why": "Cuts jailbreak success rate by half with no latency cost.",
           "mirrors": []
         }
-      ]
+      ],
+      "summary": "A quiet week for headline model releases, but retrieval architecture and safety tooling both moved forward."
     },
     {
       "id": "security",
@@ -61,7 +62,8 @@
           "why": "Exfiltrated API keys via a tool description; patched within 48 hours.",
           "mirrors": []
         }
-      ]
+      ],
+      "summary": "One serious supply-chain incident this week, patched fast — the section this issue leads with."
     },
     {
       "id": "science",
@@ -82,11 +84,13 @@
           "why": "All three synthesized and verified in the same paper — rare for generative chemistry.",
           "mirrors": []
         }
-      ]
+      ],
+      "summary": "A single but unusually complete result: proposal through synthesis in one paper."
     }
   ],
   "stats": {
     "items_seen": 412,
-    "items_kept": 4
+    "items_kept": 4,
+    "analyzed_by": "claude-sonnet-5"
   }
 }
