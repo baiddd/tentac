@@ -17,6 +17,16 @@ def _tier(source_id: str) -> int:
     return SOURCE_TIERS.get(source_id, 3)
 
 
+def _load_seen() -> set[str]:
+    import json
+    import os
+
+    if not os.path.exists("data/seen.json"):
+        return set()
+    with open("data/seen.json") as f:
+        return set(json.load(f))
+
+
 def dedupe(items: list[RawItem]) -> list[RawItem]:
     """Collapse on dedupe_key, then near-dupe titles.
 
@@ -80,7 +90,24 @@ def prefilter(items: list[RawItem]) -> list[RawItem]:
     revisions already published in a prior issue (check data/seen.json).
     Auto-keep: tier 1 sources, anything with a CVE, HF upvotes >= 30.
     """
-    raise NotImplementedError
+    seen = _load_seen()
+    kept: list[RawItem] = []
+    for item in items:
+        if item.dedupe_key in seen:
+            continue
+        if _tier(item.source_id) == 1:
+            kept.append(item)
+            continue
+        if item.meta.get("cve_ids"):
+            kept.append(item)
+            continue
+        if item.meta.get("hf_upvotes", 0) >= 30:
+            kept.append(item)
+            continue
+        if not item.summary.strip():
+            continue
+        kept.append(item)
+    return kept
 
 
 def classify_and_score(items: list[RawItem]) -> list[ScoredItem]:
