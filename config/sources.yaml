@@ -7,6 +7,58 @@
 #           source's declared sections act as a prior / restrict the choices.
 # =============================================================================
 
+# relevance_keywords — the prefilter gate for tier-2/3 arXiv items with no
+# other auto-keep signal (no CVE, no HF upvotes >= 30). An arXiv category
+# alone (cs.CV, cs.LG, cs.AI, cs.CR) does not imply relevance: most
+# submissions there are narrow domain applications (medical imaging, niche
+# optimization theory) a working AI practitioner has no reason to see in a
+# weekly digest. Matched case-insensitively against the TITLE only (body-text
+# matches are too noisy — related-work mentions fire on almost every paper).
+#
+# Tune this list weekly: if a real item got wrongly dropped, add the phrase
+# that should have caught it; if a section is flooded with noise, remove an
+# over-firing term. Keep entries as multi-word phrases where possible (single
+# words like "agent" or "transformer" match nearly everything and defeat the
+# filter's purpose).
+relevance_keywords:
+  - "chain-of-thought"
+  - "diffusion model"
+  - "hallucination"
+  - "jailbreak"
+  - "prompt injection"
+  - "red-team"
+  - "red team"
+  - "mixture-of-experts"
+  - " moe "
+  - "quantization"
+  - "retrieval-augmented"
+  - " rag "
+  - "scaling law"
+  - "text-to-image"
+  - "text-to-video"
+  - "world model"
+  - "in-context learning"
+  - "rlhf"
+  - "dpo"
+  - "instruction tuning"
+  - "interpretability"
+  - "reward model"
+  - "reward hacking"
+  - "watermark"
+  - "backdoor"
+  - "reasoning model"
+  - "tool use"
+  - "tool-use"
+  - "agentic"
+  - "vision-language model"
+  - "foundation model"
+  - "large language model"
+  - " llm "
+  - "llm-"
+  - "-llm"
+  - "vlm"
+  - "multimodal large language"
+
 sections:
   - id: llm
     label: "LLM & reasoning"
