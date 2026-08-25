@@ -9,9 +9,9 @@ const issues = getAllIssues();
   <ul>
     {issues.map((issue) => (
       <li>
-        <a href={`/w/${issue.week}`}>{issue.week}</a> — {issue.headline}
+        <a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/w/${issue.week}`}>{issue.week}</a> — {issue.headline}
       </li>
     ))}
   </ul>
-  <p><a href="/rss.xml">RSS feed &rarr;</a></p>
+  <p><a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/rss.xml`}>RSS feed &rarr;</a></p>
 </Layout>
