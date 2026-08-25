@@ -214,4 +214,33 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
     Cap at 6 items per section, 8 for security during an active incident.
     A section with 0 items renders as "quiet week" — do not pad it.
     """
-    raise NotImplementedError
+    import math
+    from collections import defaultdict
+
+    def social_component(item: ScoredItem) -> float:
+        raw = item.meta.get("hf_upvotes") or item.meta.get("github_stars") or 0
+        return min(math.log1p(raw) / math.log1p(1000), 1.0)
+
+    def source_tier_component(item: ScoredItem) -> float:
+        return (4 - _tier(item.source_id)) / 3
+
+    def final_score(item: ScoredItem) -> float:
+        return (
+            0.55 * item.score
+            + 0.25 * social_component(item)
+            + 0.20 * source_tier_component(item)
+        )
+
+    by_section: dict[str, list[ScoredItem]] = defaultdict(list)
+    for item in items:
+        by_section[item.section].append(item)
+
+    ranked: list[ScoredItem] = []
+    for section, section_items in by_section.items():
+        active_incident = section == "security" and any(
+            i.meta.get("cve_ids") for i in section_items
+        )
+        cap = 8 if active_incident else 6
+        section_items.sort(key=final_score, reverse=True)
+        ranked.extend(section_items[:cap])
+    return ranked
