@@ -1,5 +1,7 @@
 # ai-weekly
 
+**Live site: https://baiddd.github.io/tentac/**
+
 A weekly digest of what happened in AI — papers, journals, lab blogs, and
 security research — assembled by a cron job and served as a static site.
 
