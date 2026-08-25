@@ -29,7 +29,7 @@ def _load_seen() -> set[str]:
 
     if not os.path.exists("data/seen.json"):
         return set()
-    with open("data/seen.json") as f:
+    with open("data/seen.json", encoding="utf-8") as f:
         return set(json.load(f))
 
 
@@ -54,10 +54,19 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
             continue
 
         normalized_title = re.sub(r"[^\w\s]", "", item.title.lower())
+        normalized_word_count = len(normalized_title.split())
         matched_group = None
         for idx, group in enumerate(groups):
             for member in group:
                 member_title = re.sub(r"[^\w\s]", "", member.title.lower())
+                # token_set_ratio scores a strict token-subset as 100, which
+                # would otherwise merge unrelated papers whose titles happen
+                # to be word-subsets of each other (e.g. "GPT-4 Technical
+                # Report" vs. "GPT-4 Technical Report Addendum: Safety
+                # Evaluations"). Require the titles to be close in length too.
+                member_word_count = len(member_title.split())
+                if abs(normalized_word_count - member_word_count) > 2:
+                    continue
                 if fuzz.token_set_ratio(normalized_title, member_title) >= 92:
                     matched_group = idx
                     break
@@ -255,7 +264,7 @@ def _load_source_tiers() -> dict[str, int]:
 
     if not os.path.exists("config/sources.yaml"):
         return {}
-    with open("config/sources.yaml") as f:
+    with open("config/sources.yaml", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     tiers = {}
     for group in ("papers", "journals", "labs", "news", "security", "safety"):
@@ -297,7 +306,7 @@ def main() -> None:
 
     if args.stage == "prefilter":
         raw_items: list[RawItem] = []
-        with open(f"data/raw/{args.week}.jsonl") as f:
+        with open(f"data/raw/{args.week}.jsonl", encoding="utf-8") as f:
             for line in f:
                 raw_items.append(RawItem.model_validate_json(line))
 
@@ -305,7 +314,7 @@ def main() -> None:
         filtered = prefilter(deduped)
 
         os.makedirs("data/prefiltered", exist_ok=True)
-        with open(f"data/prefiltered/{args.week}.jsonl", "w") as out:
+        with open(f"data/prefiltered/{args.week}.jsonl", "w", encoding="utf-8") as out:
             for item in filtered:
                 out.write(item.model_dump_json() + "\n")
 
@@ -313,13 +322,13 @@ def main() -> None:
 
     elif args.stage == "rank":
         scored_items: list[ScoredItem] = []
-        with open(f"data/scored/{args.week}.jsonl") as f:
+        with open(f"data/scored/{args.week}.jsonl", encoding="utf-8") as f:
             for line in f:
                 scored_items.append(ScoredItem.model_validate_json(line))
 
         ranked = rank(scored_items)
 
-        with open(f"data/scored/{args.week}.jsonl", "w") as out:
+        with open(f"data/scored/{args.week}.jsonl", "w", encoding="utf-8") as out:
             for item in ranked:
                 out.write(item.model_dump_json() + "\n")
 

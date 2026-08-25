@@ -45,6 +45,23 @@ def test_dedupe_keeps_distinct_items():
     assert len(result) == 2
 
 
+def test_dedupe_does_not_merge_title_subset_of_a_different_paper():
+    """rapidfuzz.token_set_ratio scores a strict token-subset as 100, which
+    would otherwise wrongly merge two distinct papers whenever one title's
+    words are a subset of the other's (e.g. a report and its addendum).
+    """
+    items = [
+        _item("s1", "https://a.com/1", title="GPT-4 Technical Report"),
+        _item(
+            "s2",
+            "https://a.com/2",
+            title="GPT-4 Technical Report Addendum: Safety Evaluations",
+        ),
+    ]
+    result = dedupe(items)
+    assert len(result) == 2
+
+
 def test_dedupe_transitive_chain_collapses_via_equivalence_closure():
     """A founds a group by dedupe_key. B has a *different* key but a
     near-dupe title, so it joins A's group via the title path. C shares

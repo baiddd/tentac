@@ -46,7 +46,7 @@ def write_headline(items: list[ScoredItem]) -> str:
 def _section_meta() -> dict[str, dict[str, str]]:
     import yaml
 
-    with open("config/sources.yaml") as f:
+    with open("config/sources.yaml", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     return {s["id"]: {"label": s["label"], "blurb": s["blurb"]} for s in config["sections"]}
 
@@ -153,7 +153,7 @@ def main() -> None:
     section_summaries = json.loads(args.section_summaries) if args.section_summaries else None
 
     items: list[ScoredItem] = []
-    with open(f"data/scored/{args.week}.jsonl") as f:
+    with open(f"data/scored/{args.week}.jsonl", encoding="utf-8") as f:
         for line in f:
             if line.strip():
                 items.append(ScoredItem.model_validate_json(line))
@@ -168,28 +168,28 @@ def main() -> None:
 
     tmp_path = f"data/.{args.week}.json.tmp"
     final_path = f"data/{args.week}.json"
-    with open(tmp_path, "w") as f:
+    with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(issue.model_dump_json(indent=2))
     os.replace(tmp_path, final_path)
 
     index_path = "data/index.json"
     index = []
     if os.path.exists(index_path):
-        with open(index_path) as f:
+        with open(index_path, encoding="utf-8") as f:
             index = json.load(f)
     index = [entry for entry in index if entry["week"] != args.week]
     index.insert(0, {"week": issue.week, "headline": issue.headline, "generated_at": issue.generated_at.isoformat()})
     index.sort(key=lambda e: e["week"], reverse=True)
-    with open(index_path, "w") as f:
+    with open(index_path, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=2)
 
     seen_path = "data/seen.json"
     seen = set()
     if os.path.exists(seen_path):
-        with open(seen_path) as f:
+        with open(seen_path, encoding="utf-8") as f:
             seen = set(json.load(f))
     seen.update(item.dedupe_key for item in items)
-    with open(seen_path, "w") as f:
+    with open(seen_path, "w", encoding="utf-8") as f:
         json.dump(sorted(seen), f, indent=2)
 
     print(f"built {final_path}: {len(items)} items across {len(issue.sections)} sections")

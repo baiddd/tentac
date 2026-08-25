@@ -326,7 +326,7 @@ FETCHERS = {
 def _load_sources(only: set[str] | None) -> list[dict]:
     import yaml
 
-    with open("config/sources.yaml") as f:
+    with open("config/sources.yaml", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     sources = []
     for group in ("papers", "journals", "labs", "news", "security", "safety"):
@@ -361,7 +361,7 @@ def main() -> None:
     os.makedirs(out_dir, exist_ok=True)
     out_path = f"{out_dir}/{week}.jsonl"
 
-    with open(out_path, "w") as out:
+    with open(out_path, "w", encoding="utf-8") as out:
         for source in sources:
             fetcher = FETCHERS.get(source["kind"])
             if fetcher is None:
