@@ -7,6 +7,8 @@ Output: data/scored/<week>.jsonl
 
 from __future__ import annotations
 
+import argparse
+import sys
 from typing import get_args
 
 from anthropic import Anthropic
@@ -244,3 +246,85 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
         section_items.sort(key=final_score, reverse=True)
         ranked.extend(section_items[:cap])
     return ranked
+
+
+def _load_source_tiers() -> dict[str, int]:
+    import os
+
+    import yaml
+
+    if not os.path.exists("config/sources.yaml"):
+        return {}
+    with open("config/sources.yaml") as f:
+        config = yaml.safe_load(f)
+    tiers = {}
+    for group in ("papers", "journals", "labs", "news", "security", "safety"):
+        for source in config.get(group, []):
+            tiers[source["id"]] = source["tier"]
+    return tiers
+
+
+def main() -> None:
+    global SOURCE_TIERS
+    import os
+
+    from dates import week_from_date
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--week", help="ISO week, e.g. 2026-W34.")
+    parser.add_argument(
+        "--date", help="Any date within the target week, e.g. 2026-08-24 — an alternative to --week."
+    )
+    parser.add_argument(
+        "--stage",
+        required=True,
+        choices=["prefilter", "rank"],
+        help=(
+            "prefilter: dedupe+prefilter data/raw -> data/prefiltered (no LLM, runs in CI). "
+            "rank: apply the rank formula to an already-classified data/scored/<week>.jsonl "
+            "in place (no LLM, runs locally after manual/Claude-Code classification)."
+        ),
+    )
+    args = parser.parse_args()
+
+    if args.week and args.date:
+        parser.error("--week and --date are mutually exclusive")
+    if not args.week and not args.date:
+        parser.error("one of --week or --date is required")
+    args.week = week_from_date(args.date) if args.date else args.week
+
+    SOURCE_TIERS = _load_source_tiers()
+
+    if args.stage == "prefilter":
+        raw_items: list[RawItem] = []
+        with open(f"data/raw/{args.week}.jsonl") as f:
+            for line in f:
+                raw_items.append(RawItem.model_validate_json(line))
+
+        deduped = dedupe(raw_items)
+        filtered = prefilter(deduped)
+
+        os.makedirs("data/prefiltered", exist_ok=True)
+        with open(f"data/prefiltered/{args.week}.jsonl", "w") as out:
+            for item in filtered:
+                out.write(item.model_dump_json() + "\n")
+
+        print(f"week {args.week}: {len(raw_items)} raw -> {len(filtered)} prefiltered")
+
+    elif args.stage == "rank":
+        scored_items: list[ScoredItem] = []
+        with open(f"data/scored/{args.week}.jsonl") as f:
+            for line in f:
+                scored_items.append(ScoredItem.model_validate_json(line))
+
+        ranked = rank(scored_items)
+
+        with open(f"data/scored/{args.week}.jsonl", "w") as out:
+            for item in ranked:
+                out.write(item.model_dump_json() + "\n")
+
+        print(f"week {args.week}: {len(scored_items)} classified -> {len(ranked)} ranked")
+
+
+if __name__ == "__main__":
+    main()
