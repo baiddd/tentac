@@ -14,9 +14,16 @@ that's the pipeline's name, not the site's brand. Only user-facing text
 
 - `config/sources.yaml` — every source, grouped by section, with a tier
 - `pipeline/` — fetch → score → build
-- `data/` — one committed JSON file per week; the archive is the git history
+- `data/` — one committed JSON file per week; the archive is the git history.
+  `prefiltered/<week>.jsonl` reflects the prefilter logic as of whenever it
+  was last (re)generated — if `relevance_keywords` gets tuned after a week
+  ships, that week's `prefiltered` file won't necessarily still contain
+  every item in its already-published `<week>.json`/`scored/<week>.jsonl`.
+  The published issue itself is never affected by re-running prefilter.
 - `web/` — Astro site published to GitHub Pages
-- `.claude/skills/weekly-analysis/` — the local, no-API-key classification step
+- `.claude/skills/weekly-analysis/` — the local, no-API-key classification
+  step. Gitignored (internal tooling, not part of the public repo) — you
+  need your own local copy to run it.
 
 ## How a weekly issue happens
 
@@ -30,7 +37,8 @@ that's the pipeline's name, not the site's brand. Only user-facing text
    ```bash
    git fetch && git checkout issue/2026-W34
    ```
-   Open Claude Code in the repo and run `/weekly-analysis`. It classifies
+   Open Claude Code in the repo and run `/weekly-analysis` (requires your
+   local, gitignored copy of the skill — see above). It classifies
    and scores every item, checks that each source link actually resolves
    (drops dead links), ranks them, writes the headline, and assembles
    `data/2026-W34.json`. Review the diff, commit, and push to the same
