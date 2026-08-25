@@ -337,14 +337,21 @@ def _load_sources(only: set[str] | None) -> list[dict]:
 
 
 def main() -> None:
-    from dates import current_week, week_bounds
+    from dates import current_week, week_bounds, week_from_date
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--week", help="ISO week, e.g. 2026-W34. Defaults to last complete week.")
+    parser.add_argument(
+        "--date",
+        help="Any date within the target week, e.g. 2026-08-24 — an alternative to --week.",
+    )
     parser.add_argument("--only", help="Comma-separated source ids, for debugging.")
     args = parser.parse_args()
 
-    week = args.week or current_week()
+    if args.week and args.date:
+        parser.error("--week and --date are mutually exclusive")
+
+    week = week_from_date(args.date) if args.date else (args.week or current_week())
     since, until = week_bounds(week)
     only = set(args.only.split(",")) if args.only else None
 

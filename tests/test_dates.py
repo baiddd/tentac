@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from freezegun import freeze_time
 
-from dates import week_bounds, current_week
+from dates import week_bounds, current_week, week_from_date
 
 
 def test_week_bounds_mid_year():
@@ -32,3 +32,20 @@ def test_current_week_on_monday_returns_prior_week():
 @freeze_time("2026-08-20 10:00:00")  # a Thursday, mid-week
 def test_current_week_midweek_returns_prior_complete_week():
     assert current_week() == "2026-W33"
+
+
+def test_week_from_date_mid_week():
+    assert week_from_date("2026-08-24") == "2026-W35"
+
+
+def test_week_from_date_monday_itself():
+    assert week_from_date("2026-08-17") == "2026-W34"
+
+
+def test_week_from_date_year_boundary():
+    assert week_from_date("2025-12-29") == "2026-W01"
+
+
+def test_week_from_date_rejects_bad_format():
+    with pytest.raises(ValueError):
+        week_from_date("24-08-2026")

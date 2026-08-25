@@ -54,3 +54,43 @@ papers:
     captured = capsys.readouterr()
     assert "dead-source" in captured.out
     assert "boom" in captured.out
+
+
+def test_main_accepts_date_instead_of_week(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: good-source
+    kind: rss
+    url: https://example.com/feed.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+
+    def fake_fetch_rss(source, since, until):
+        return [_item(source["id"], "https://example.com/a")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    # 2026-08-24 falls in ISO week 2026-W35.
+    monkeypatch.setattr(fetch.sys, "argv", ["fetch.py", "--date", "2026-08-24"])
+
+    fetch.main()
+
+    out_path = tmp_path / "data" / "raw" / "2026-W35.jsonl"
+    assert out_path.exists()
+
+
+def test_main_rejects_week_and_date_together(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text("papers: []\n")
+
+    monkeypatch.setattr(
+        fetch.sys, "argv", ["fetch.py", "--week", "2026-W34", "--date", "2026-08-24"]
+    )
+
+    with pytest.raises(SystemExit):
+        fetch.main()

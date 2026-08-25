@@ -24,3 +24,13 @@ def current_week() -> str:
     last_complete_monday = now - timedelta(days=now.isoweekday())
     iso = last_complete_monday.isocalendar()
     return f"{iso.year}-W{iso.week:02d}"
+
+
+def week_from_date(date_str: str) -> str:
+    """ISO week string (e.g. '2026-W34') containing the given 'YYYY-MM-DD' date."""
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"expected a date like '2026-08-24', got {date_str!r}") from exc
+    iso = date.isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
