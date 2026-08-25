@@ -91,8 +91,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         document.addEventListener("click", (e) => {
           const target = findTerm(e.target);
           if (target) {
+            // Don't toggle: a real mouse click is preceded by mouseover,
+            // which already opened the popover for this exact target —
+            // toggling here would immediately close what mouseover just
+            // opened. Always (re)open for the clicked target instead;
+            // this is also what makes tap work on touch devices, which
+            // fire click without a preceding mouseover.
             e.preventDefault();
-            popover ? closePopover() : openPopover(target);
+            openPopover(target);
           } else {
             closePopover();
           }
