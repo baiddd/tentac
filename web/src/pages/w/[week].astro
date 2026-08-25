@@ -1,0 +1,19 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import SectionBlock from "../../components/SectionBlock.astro";
+import { getAllIssues, getIssue } from "../../lib/issues";
+
+export function getStaticPaths() {
+  return getAllIssues().map((issue) => ({ params: { week: issue.week } }));
+}
+
+const { week } = Astro.params;
+const issue = getIssue(week!);
+if (!issue) throw new Error(`no issue for week ${week}`);
+---
+<Layout title={`ai-weekly — ${issue.week}`}>
+  <h1>ai-weekly — {issue.week}</h1>
+  <p class="ai-summary"><span class="robot">🤖</span>{issue.headline}</p>
+  {issue.sections.map((section) => <SectionBlock section={section} />)}
+  <p><a href="/archive">See every past issue &rarr;</a></p>
+</Layout>

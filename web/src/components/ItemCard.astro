@@ -1,0 +1,21 @@
+---
+import type { ScoredItemData } from "../lib/issues";
+
+interface Props {
+  item: ScoredItemData;
+  sectionId: string;
+}
+const { item, sectionId } = Astro.props;
+---
+<div class:list={["item-card", { security: sectionId === "security" }]}>
+  <p class="why">{item.why}</p>
+  <a class="title-link" href={item.url} target="_blank" rel="noopener">{item.title} &rarr;</a>
+  {item.mirrors.length > 0 && (
+    <p class="mirrors">
+      also:
+      {item.mirrors.map((mirrorUrl, i) => (
+        <a href={mirrorUrl} target="_blank" rel="noopener">source {i + 2}</a>
+      ))}
+    </p>
+  )}
+</div>

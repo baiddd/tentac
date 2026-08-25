@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getAllIssues } from "../lib/issues";
+
+const issues = getAllIssues();
+---
+<Layout title="ai-weekly — archive">
+  <h1>Archive</h1>
+  <ul>
+    {issues.map((issue) => (
+      <li>
+        <a href={`/w/${issue.week}`}>{issue.week}</a> — {issue.headline}
+      </li>
+    ))}
+  </ul>
+  <p><a href="/rss.xml">RSS feed &rarr;</a></p>
+</Layout>

@@ -1,0 +1,14 @@
+---
+import type { SectionData } from "../lib/issues";
+import ItemCard from "./ItemCard.astro";
+
+interface Props {
+  section: SectionData;
+}
+const { section } = Astro.props;
+---
+<section class="section-block">
+  <h2>{section.label}</h2>
+  <p class="blurb">{section.blurb}</p>
+  {section.items.map((item) => <ItemCard item={item} sectionId={section.id} />)}
+</section>
