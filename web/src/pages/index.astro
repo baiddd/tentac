@@ -1,12 +1,17 @@
 ---
+import { Image } from "astro:assets";
 import Layout from "../layouts/Layout.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { getAllIssues } from "../lib/issues";
+import { getCoverImage, getWeekTheme } from "../lib/weekTheme";
 
 const issues = getAllIssues();
 const latest = issues[0];
+const cover = latest ? getCoverImage(latest.week) : undefined;
+const theme = latest ? getWeekTheme(latest.week) : undefined;
 ---
-<Layout title={latest ? `tentac — ${latest.week}` : "tentac"}>
+<Layout title={latest ? `tentac — ${latest.week}` : "tentac"} theme={theme}>
+  {cover && <Image src={cover} alt={`Cover image for ${latest.week}`} class="cover-image" widths={[480, 960, 1440]} sizes="(min-width: 640px) 44rem, 100vw" />}
   <h1>tentac</h1>
   <p class="tagline">A weekly digest of what happened in AI — papers, lab releases, and security incidents, picked and summarized by Claude.</p>
   {issues.length > 1 && (
