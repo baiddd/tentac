@@ -83,6 +83,7 @@ class Section(BaseModel):
     label: str
     blurb: str
     items: list[ScoredItem]
+    summary: str = ""  # one AI-written sentence on what happened in this section this week
 
 
 class Issue(BaseModel):
