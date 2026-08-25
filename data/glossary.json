@@ -1,0 +1,22 @@
+{
+  "LLM": "Large Language Model — a neural network trained on huge amounts of text to predict and generate language, the basis of systems like GPT and Claude.",
+  "MLLM": "Multimodal Large Language Model — an LLM extended to also take images, video, or audio as input, not just text.",
+  "SFT": "Supervised Fine-Tuning — training a pretrained model further on labeled examples of the exact task you want it to do.",
+  "RL": "Reinforcement Learning — training a model by rewarding good actions and penalizing bad ones, rather than showing it labeled examples directly.",
+  "RLHF": "Reinforcement Learning from Human Feedback — using human preference ratings as the reward signal to fine-tune a model's behavior.",
+  "DPO": "Direct Preference Optimization — a way to fine-tune a model on human preference data without needing a separate reward model, simpler than RLHF.",
+  "RAG": "Retrieval-Augmented Generation — a model looks up relevant documents at answer-time and uses them as context, instead of relying only on what it memorized during training.",
+  "Gaussian Splatting": "A technique for representing and rendering 3D scenes as a cloud of small blob-like \"splats\" instead of a mesh or neural field, popular for fast, realistic 3D reconstruction.",
+  "JEPA": "Joint-Embedding Predictive Architecture — a model design that predicts a target's embedding (compressed representation) rather than the target's raw pixels or tokens, meant to be more efficient to train.",
+  "MPC": "Model Predictive Control — a control method that repeatedly plans a short sequence of future actions using a model of how the system behaves, then takes just the first action and re-plans.",
+  "Quantization": "Compressing a model by storing its weights with fewer bits (e.g. 4-bit instead of 16-bit), which shrinks memory and speeds up inference at some cost to accuracy.",
+  "PTX": "NVIDIA's intermediate, near-assembly instruction format for GPU code — writing or generating PTX directly gives fine control over how a kernel actually runs on the hardware.",
+  "CVE": "Common Vulnerabilities and Exposures — the standard public ID system for tracking known software security flaws (e.g. \"CVE-2026-12345\").",
+  "DoS": "Denial-of-Service — an attack that overwhelms a system so it can't serve legitimate requests, rather than trying to steal data.",
+  "SMT solver": "Satisfiability Modulo Theories solver — software that automatically checks whether a set of logical/mathematical constraints can be satisfied, used inside many reasoning and verification systems.",
+  "jailbreak": "A prompt or technique designed to get an AI model to bypass its safety guidelines and produce output it was trained to refuse.",
+  "UQ": "Uncertainty Quantification — measuring how confident a model actually is in a given prediction, rather than treating every output as equally reliable.",
+  "retrosynthesis": "In chemistry, working backward from a target molecule to figure out a sequence of reactions that could synthesize it.",
+  "diffusion model": "A generative model that creates images (or other data) by learning to reverse a process of gradually adding noise, starting from pure noise and denoising it step by step into a final output.",
+  "knowledge poisoning": "Deliberately inserting false or misleading information into a model's data sources (e.g. documents a RAG system retrieves from) so the model produces incorrect or manipulated answers."
+}

@@ -139,6 +139,32 @@ h1 {
 
 .item-card .mirrors a { margin-right: 0.75rem; }
 
+.glossary-term {
+  border-bottom: 1px dotted var(--text-muted);
+  cursor: help;
+}
+
+.glossary-term:hover,
+.glossary-term:focus-visible {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.glossary-popover {
+  position: absolute;
+  z-index: 10;
+  max-width: 20rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

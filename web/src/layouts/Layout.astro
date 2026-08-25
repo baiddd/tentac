@@ -36,5 +36,74 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <div class="container">
       <slot />
     </div>
+    <script>
+      // Glossary hover/tap popovers. The only client JS on this site by
+      // design — everything else is static HTML/CSS. See ItemCard.astro,
+      // SectionBlock.astro, and lib/glossary.ts for how .glossary-term
+      // spans get their data-definition attribute at build time.
+      (function () {
+        let popover = null;
+
+        function closePopover() {
+          if (popover) {
+            popover.remove();
+            popover = null;
+          }
+        }
+
+        function openPopover(target) {
+          closePopover();
+          const definition = target.getAttribute("data-definition");
+          if (!definition) return;
+          popover = document.createElement("div");
+          popover.className = "glossary-popover";
+          popover.setAttribute("role", "tooltip");
+          popover.textContent = definition;
+          document.body.appendChild(popover);
+
+          const rect = target.getBoundingClientRect();
+          const popRect = popover.getBoundingClientRect();
+          let left = rect.left + window.scrollX;
+          const maxLeft = window.scrollX + document.documentElement.clientWidth - popRect.width - 8;
+          if (left > maxLeft) left = Math.max(8, maxLeft);
+          popover.style.left = `${left}px`;
+          popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+        }
+
+        function findTerm(eventTarget) {
+          return eventTarget instanceof Element ? eventTarget.closest(".glossary-term") : null;
+        }
+
+        document.addEventListener("mouseover", (e) => {
+          const target = findTerm(e.target);
+          if (target) openPopover(target);
+        });
+        document.addEventListener("mouseout", (e) => {
+          if (findTerm(e.target)) closePopover();
+        });
+        document.addEventListener("focusin", (e) => {
+          const target = findTerm(e.target);
+          if (target) openPopover(target);
+        });
+        document.addEventListener("focusout", (e) => {
+          if (findTerm(e.target)) closePopover();
+        });
+        document.addEventListener("click", (e) => {
+          const target = findTerm(e.target);
+          if (target) {
+            // Don't toggle: a real mouse click is preceded by mouseover,
+            // which already opened the popover for this exact target —
+            // toggling here would immediately close what mouseover just
+            // opened. Always (re)open for the clicked target instead;
+            // this is also what makes tap work on touch devices, which
+            // fire click without a preceding mouseover.
+            e.preventDefault();
+            openPopover(target);
+          } else {
+            closePopover();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

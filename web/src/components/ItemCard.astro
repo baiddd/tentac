@@ -1,5 +1,6 @@
 ---
 import type { ScoredItemData } from "../lib/issues";
+import { annotateGlossary } from "../lib/glossary";
 
 interface Props {
   item: ScoredItemData;
@@ -8,7 +9,7 @@ interface Props {
 const { item, sectionId } = Astro.props;
 ---
 <div class:list={["item-card", { security: sectionId === "security" }]}>
-  <p class="why">{item.why}</p>
+  <p class="why" set:html={annotateGlossary(item.why)} />
   <a class="title-link" href={item.url} target="_blank" rel="noopener">{item.title} &rarr;</a>
   {item.mirrors.length > 0 && (
     <p class="mirrors">
