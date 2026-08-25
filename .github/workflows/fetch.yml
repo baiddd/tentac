@@ -1,0 +1,101 @@
+name: Fetch weekly issue (opens a PR for review)
+
+# No ANTHROPIC_API_KEY anywhere in this workflow. It only fetches and
+# prefilters (pure code, no LLM) and opens a PR. Classification, ranking,
+# and the headline are done locally via the `/weekly-analysis` Claude Code
+# skill (see .claude/skills/weekly-analysis/SKILL.md) before the PR merges.
+
+on:
+  schedule:
+    - cron: "0 6 * * MON"   # Monday 06:00 UTC, covers the week that just closed
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "ISO week to fetch, e.g. 2026-W34. Defaults to last complete week."
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Restore fetch cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: feed-cache-${{ github.run_id }}
+          restore-keys: feed-cache-
+
+      - name: Resolve week
+        id: week
+        run: |
+          if [ -n "${{ inputs.week }}" ]; then
+            week="${{ inputs.week }}"
+          else
+            week=$(PYTHONPATH=pipeline python -c "from dates import current_week; print(current_week())")
+          fi
+          echo "week=$week" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch
+        run: python pipeline/fetch.py --week "${{ steps.week.outputs.week }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prefilter (dedupe + prefilter, no LLM)
+        run: python pipeline/score.py --week "${{ steps.week.outputs.week }}" --stage prefilter
+
+      - name: Open PR with raw + prefiltered data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          week="${{ steps.week.outputs.week }}"
+          branch="issue/$week"
+          raw_path="data/raw/$week.jsonl"
+          prefiltered_path="data/prefiltered/$week.jsonl"
+
+          git config user.name  "ai-weekly-bot"
+          git config user.email "bot@users.noreply.github.com"
+
+          if [ ! -s "$prefiltered_path" ]; then
+            echo "no items survived prefiltering for $week — skipping PR"
+            exit 0
+          fi
+
+          git checkout -b "$branch"
+          git add "$raw_path" "$prefiltered_path"
+          if git diff --staged --quiet; then
+            echo "nothing new for $week — skipping PR"
+            exit 0
+          fi
+
+          item_count=$(wc -l < "$prefiltered_path" | tr -d ' ')
+          git commit -m "fetch: $week ($item_count items ready for review)"
+          git push -u origin "$branch" --force
+
+          if gh pr view "$branch" >/dev/null 2>&1; then
+            echo "PR for $branch already exists, updated its branch"
+            exit 0
+          fi
+
+          gh pr create \
+            --title "Week $week: $item_count items ready for review" \
+            --body "Fetched and prefiltered automatically — **no LLM calls made**. To finish this issue:
+
+1. \`git fetch && git checkout $branch\`
+2. Open Claude Code in this repo and run \`/weekly-analysis\` (see \`.claude/skills/weekly-analysis/SKILL.md\`) — it classifies, ranks, and writes the headline directly, no API key needed.
+3. Review the diff, commit, push to this branch.
+4. Merge this PR — the site deploys automatically." \
+            --base main \
+            --head "$branch"
