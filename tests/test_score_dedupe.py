@@ -70,6 +70,31 @@ def test_dedupe_mirror_urls_are_deduplicated_when_group_has_identical_urls(monke
     )
 
 
+def test_dedupe_mirror_urls_exclude_the_winners_own_url(monkeypatch):
+    """A paper cross-listed in two arXiv categories, where the higher-tier
+    "winner" is itself one of the arXiv entries (not e.g. hf-daily-papers),
+    can end up with a mirror URL identical to its own url (arXiv has no
+    per-category URL). Listing an item's own URL as its own "mirror" is
+    wrong regardless of the intra-mirror dedup added above.
+    """
+    tiers = {"arxiv-cs-lg": 2, "arxiv-cs-ai": 2}
+    monkeypatch.setattr("score.SOURCE_TIERS", tiers)
+
+    same_arxiv_url = "http://arxiv.org/abs/2608.20574v1"
+    items = [
+        _item("arxiv-cs-lg", same_arxiv_url, title="FlavourBench", arxiv_id="2608.20574v1"),
+        _item("arxiv-cs-ai", same_arxiv_url, title="FlavourBench", arxiv_id="2608.20574v1"),
+    ]
+    result = dedupe(items)
+
+    assert len(result) == 1
+    mirror_urls = result[0].meta.get("mirror_urls", [])
+    assert mirror_urls == [], (
+        "a mirror identical to the winner's own url must not be listed, "
+        f"got {mirror_urls!r}"
+    )
+
+
 def test_dedupe_keeps_distinct_items():
     items = [_item("s1", "https://a.com/1", title="A"), _item("s2", "https://a.com/2", title="B")]
     result = dedupe(items)
