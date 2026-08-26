@@ -403,11 +403,66 @@ def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem
     return items
 
 
+def fetch_the_batch(source: dict, since: datetime, until: datetime) -> list[RawItem]:
+    """the-batch has no working RSS feed (the configured URL 404s). The tag
+    listing page has no per-item dates, so this reads the listing's own
+    CollectionPage JSON-LD for titles/URLs, then reads each linked
+    article's NewsArticle JSON-LD for its datePublished. Both are
+    structured data blocks, not CSS-selector scraping.
+    """
+    import json
+    import re
+
+    import httpx
+
+    listing_response = httpx.get(
+        source["url"], timeout=30, follow_redirects=True, headers=_HEADERS
+    )
+    listing_response.raise_for_status()
+
+    listing_match = re.search(
+        r'<script type="application/ld\+json">(\{"@context":"https://schema\.org","@type":"CollectionPage".*?)</script>',
+        listing_response.text,
+        re.DOTALL,
+    )
+    if listing_match is None:
+        return []
+    collection = json.loads(listing_match.group(1))
+    entries = collection.get("mainEntity", {}).get("itemListElement", [])
+
+    items: list[RawItem] = []
+    for entry in entries:
+        url = entry["url"]
+        article_response = httpx.get(
+            url, timeout=30, follow_redirects=True, headers=_HEADERS
+        )
+        article_response.raise_for_status()
+        date_match = re.search(
+            r'"datePublished"\s*:\s*"([^"]+)"', article_response.text
+        )
+        if date_match is None:
+            continue
+        published_at = datetime.fromisoformat(date_match.group(1))
+        if not (since <= published_at < until):
+            continue
+        items.append(
+            RawItem(
+                source_id=source["id"],
+                kind="article",
+                title=entry["name"],
+                url=url,
+                published_at=published_at,
+            )
+        )
+    return items
+
+
 def _fetch_api(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     dispatch = {
         "hf-daily-papers": fetch_hf_daily,
         "openreview": fetch_openreview,
         "github-advisories": fetch_github_advisories,
+        "the-batch": fetch_the_batch,
     }
     handler = dispatch.get(source["id"])
     if handler is None:

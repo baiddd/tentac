@@ -254,9 +254,10 @@ news:
     tier: 1
     sections: [llm, safety, industry]
   - id: the-batch
-    kind: rss
-    url: https://www.deeplearning.ai/the-batch/feed/
+    kind: api
+    url: https://www.deeplearning.ai/the-batch/tag/research
     tier: 2
+    note: "No working RSS feed as of 2026-08 (deeplearning.ai/the-batch/feed/ 404s). Uses the tag/research listing page's CollectionPage JSON-LD for titles/URLs, then each article's own NewsArticle JSON-LD for its date — see fetch_the_batch. Scoped to the research tag specifically (skips business/opinion pieces), which fits this digest's focus."
     sections: [llm, industry]
 
 # -----------------------------------------------------------------------------
