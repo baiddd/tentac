@@ -18,5 +18,11 @@
   "UQ": "Uncertainty Quantification — measuring how confident a model actually is in a given prediction, rather than treating every output as equally reliable.",
   "retrosynthesis": "In chemistry, working backward from a target molecule to figure out a sequence of reactions that could synthesize it.",
   "diffusion model": "A generative model that creates images (or other data) by learning to reverse a process of gradually adding noise, starting from pure noise and denoising it step by step into a final output.",
-  "knowledge poisoning": "Deliberately inserting false or misleading information into a model's data sources (e.g. documents a RAG system retrieves from) so the model produces incorrect or manipulated answers."
+  "knowledge poisoning": "Deliberately inserting false or misleading information into a model's data sources (e.g. documents a RAG system retrieves from) so the model produces incorrect or manipulated answers.",
+  "MoE": "Mixture-of-Experts — a model architecture that routes each input to a small subset of specialized \"expert\" sub-networks instead of using the whole model every time, cutting compute cost as models scale up.",
+  "MCP": "Model Context Protocol — a standard way for AI agents to connect to external tools and data sources (files, APIs, databases) through a common interface, instead of each app building its own custom integration.",
+  "CI/CD": "Continuous Integration / Continuous Deployment — the automated pipeline that builds, tests, and ships code changes, a high-value target for attackers since compromising it can taint everything it deploys.",
+  "red team": "A group (human or, increasingly, AI-driven) that deliberately attacks a system the way a real adversary would, to find exploitable weaknesses before one does.",
+  "vibe coding": "Writing software by describing what you want in natural language and letting an AI agent generate and run the code, rather than writing it by hand line by line.",
+  "supply chain attack": "Compromising a widely-used dependency, package, or build tool so the attack spreads to everyone who installs or builds with it, instead of attacking each victim directly."
 }
