@@ -17,15 +17,15 @@ def _scored(section, score, source_id="s", **meta):
 
 
 def test_rank_caps_six_per_section(monkeypatch):
-    monkeypatch.setattr("score.SOURCE_TIERS", {"s": 2})
-    items = [_scored("llm", 0.9 - i * 0.01) for i in range(10)]
+    monkeypatch.setattr("score.SOURCE_TIERS", {"s0": 2, "s1": 2, "s2": 2, "s3": 2})
+    items = [_scored("llm", 0.9 - i * 0.01, source_id=f"s{i % 4}") for i in range(10)]
     result = rank(items)
     assert len(result) == 6
 
 
 def test_rank_caps_eight_for_security_with_active_incident(monkeypatch):
-    monkeypatch.setattr("score.SOURCE_TIERS", {"s": 2})
-    items = [_scored("security", 0.9 - i * 0.01, cve_ids=["CVE-2026-1"]) for i in range(10)]
+    monkeypatch.setattr("score.SOURCE_TIERS", {"s0": 2, "s1": 2, "s2": 2, "s3": 2})
+    items = [_scored("security", 0.9 - i * 0.01, source_id=f"s{i % 4}", cve_ids=["CVE-2026-1"]) for i in range(10)]
     result = rank(items)
     assert len(result) == 8
 
@@ -82,3 +82,24 @@ def test_rank_asserts_exact_blended_formula_weights(monkeypatch):
     result = rank([item_b, item_a])
     assert result[0].score == 0.6, f"Item A (lower raw score, high social/tier) should rank first, got {result[0].score}"
     assert result[1].score == 0.9, f"Item B (higher raw score, low social/tier) should rank second, got {result[1].score}"
+
+
+def test_rank_caps_three_per_source_within_a_section(monkeypatch):
+    monkeypatch.setattr("score.SOURCE_TIERS", {"dominant": 2, "other": 2, "filler": 2})
+    # 10 items from one source, all scoring higher than the rest — without a
+    # per-source cap, "dominant" would take all 6 section slots. "other" and
+    # "filler" together supply exactly enough items (2 + 1) to fill the 3
+    # slots freed up by capping "dominant" at 3, so the total still reaches
+    # the section cap of 6.
+    dominant_items = [
+        _scored("llm", 0.9 - i * 0.01, source_id="dominant") for i in range(10)
+    ]
+    other_items = [_scored("llm", 0.5, source_id="other") for _ in range(2)]
+    filler_items = [_scored("llm", 0.4, source_id="filler") for _ in range(1)]
+    result = rank(dominant_items + other_items + filler_items)
+
+    assert len(result) == 6, "section cap of 6 should still apply"
+    by_source = [item.source_id for item in result]
+    assert by_source.count("dominant") == 3, "no source should exceed 3 items in a section"
+    assert by_source.count("other") == 2, "lower-scoring source should fill the freed-up slots"
+    assert by_source.count("filler") == 1, "third source should fill the last freed-up slot"

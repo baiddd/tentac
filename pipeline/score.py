@@ -253,7 +253,11 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
               + 0.20 * source_tier
 
     Cap at 6 items per section, 8 for security during an active incident.
-    A section with 0 items renders as "quiet week" — do not pad it.
+    Within a section, no single source_id may contribute more than 3 items
+    — a structural diversity floor so one high-volume source (e.g. an
+    arXiv category feed with hundreds of weekly candidates) can't fill an
+    entire section on volume alone. A section with 0 items renders as
+    "quiet week" — do not pad it.
     """
     import math
     from collections import defaultdict
@@ -272,6 +276,8 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
             + 0.20 * source_tier_component(item)
         )
 
+    MAX_PER_SOURCE = 3
+
     by_section: dict[str, list[ScoredItem]] = defaultdict(list)
     for item in items:
         by_section[item.section].append(item)
@@ -283,7 +289,18 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
         )
         cap = 8 if active_incident else 6
         section_items.sort(key=final_score, reverse=True)
-        ranked.extend(section_items[:cap])
+
+        survivors: list[ScoredItem] = []
+        per_source_count: dict[str, int] = defaultdict(int)
+        for item in section_items:
+            if len(survivors) >= cap:
+                break
+            if per_source_count[item.source_id] >= MAX_PER_SOURCE:
+                continue
+            survivors.append(item)
+            per_source_count[item.source_id] += 1
+
+        ranked.extend(survivors)
     return ranked
 
 
