@@ -114,3 +114,25 @@ def test_build_issue_defaults_summary_to_empty_string(monkeypatch):
     issue = build_issue("2026-W34", items, headline="h")
 
     assert issue.sections[0].summary == ""
+
+
+def test_build_issue_uses_given_title(monkeypatch):
+    monkeypatch.setattr(
+        "build._section_meta",
+        lambda: {"llm": {"label": "LLM & reasoning", "blurb": "Models, training, benchmarks, agents"}},
+    )
+    items = [_scored("llm", 0.9, "Alpha")]
+    issue = build_issue("2026-W34", items, headline="h", title="AI Is Starting To Fight Back")
+
+    assert issue.title == "AI Is Starting To Fight Back"
+
+
+def test_build_issue_defaults_title_to_empty_string(monkeypatch):
+    monkeypatch.setattr(
+        "build._section_meta",
+        lambda: {"llm": {"label": "LLM & reasoning", "blurb": "Models, training, benchmarks, agents"}},
+    )
+    items = [_scored("llm", 0.9, "Alpha")]
+    issue = build_issue("2026-W34", items, headline="h")
+
+    assert issue.title == ""

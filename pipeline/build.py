@@ -55,18 +55,23 @@ def build_issue(
     week: str,
     items: list[ScoredItem],
     headline: str | None = None,
+    title: str = "",
     analyzed_by: str | None = None,
     section_summaries: dict[str, str] | None = None,
 ) -> Issue:
     """Assemble the issue. `headline`, if given, is used as-is (no LLM call) —
     this is how the no-API-key workflow supplies a headline written locally
     by Claude Code. Omit it to fall back to `write_headline` (an LLM call),
-    for a fully-automated path with a real ANTHROPIC_API_KEY. `analyzed_by`,
-    if given, is recorded in `stats["analyzed_by"]` — the site shows it as a
-    small credit line under the AI-summary block (e.g. "claude-sonnet-5").
-    `section_summaries`, if given, maps a `SectionId` to a one-sentence
-    recap shown under that section's heading on the site (`Section.summary`)
-    — missing keys just leave that section's summary empty, never an error.
+    for a fully-automated path with a real ANTHROPIC_API_KEY. `title`, if
+    given, is a short punchy title (a few words) distinct from the longer
+    `headline` sentence — written locally the same way `headline` is, no LLM
+    call of its own; omit it to leave `Issue.title` empty (the site falls
+    back to showing `headline` alone). `analyzed_by`, if given, is recorded
+    in `stats["analyzed_by"]` — the site shows it as a small credit line
+    under the AI-summary block (e.g. "claude-sonnet-5"). `section_summaries`,
+    if given, maps a `SectionId` to a one-sentence recap shown under that
+    section's heading on the site (`Section.summary`) — missing keys just
+    leave that section's summary empty, never an error.
     """
     from collections import defaultdict
 
@@ -104,6 +109,7 @@ def build_issue(
         starts_on=starts_on,
         ends_on=ends_on,
         generated_at=datetime.now(timezone.utc),
+        title=title,
         headline=headline if headline is not None else write_headline(items),
         sections=sections,
         stats=stats,
@@ -127,6 +133,14 @@ def main() -> None:
         help=(
             "Use this headline text as-is instead of calling write_headline (an LLM call). "
             "This is how the no-API-key workflow supplies a headline written locally by Claude Code."
+        ),
+    )
+    parser.add_argument(
+        "--title",
+        help=(
+            "A short punchy title (a few words), distinct from --headline's longer "
+            "sentence. Optional — omit to leave Issue.title empty; the site falls back "
+            "to showing --headline alone."
         ),
     )
     parser.add_argument(
@@ -162,6 +176,7 @@ def main() -> None:
         args.week,
         items,
         headline=args.headline,
+        title=args.title or "",
         analyzed_by=args.analyzed_by,
         section_summaries=section_summaries,
     )

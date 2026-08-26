@@ -26,6 +26,9 @@ export interface IssueData {
   starts_on: string;
   ends_on: string;
   generated_at: string;
+  /** Short punchy title (a few words), distinct from `headline`. Optional —
+   * empty string when the weekly-analysis skill didn't supply one. */
+  title: string;
   headline: string;
   sections: SectionData[];
   stats: Record<string, unknown>;

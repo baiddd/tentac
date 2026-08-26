@@ -83,6 +83,37 @@ def test_main_headline_flag_skips_write_headline(tmp_path, monkeypatch):
     assert issue["headline"] == "Written by Claude Code."
 
 
+def test_main_title_flag_sets_issue_title(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_sources_yaml(tmp_path)
+    (tmp_path / "data" / "scored").mkdir(parents=True)
+    (tmp_path / "data" / "scored" / "2026-W34.jsonl").write_text("")
+
+    with patch("build.write_headline", return_value="Quiet week."):
+        monkeypatch.setattr(
+            "sys.argv",
+            ["build.py", "--week", "2026-W34", "--title", "AI Is Starting To Fight Back"],
+        )
+        build.main()
+
+    issue = json.loads((tmp_path / "data" / "2026-W34.json").read_text())
+    assert issue["title"] == "AI Is Starting To Fight Back"
+
+
+def test_main_without_title_flag_defaults_to_empty_string(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_sources_yaml(tmp_path)
+    (tmp_path / "data" / "scored").mkdir(parents=True)
+    (tmp_path / "data" / "scored" / "2026-W34.jsonl").write_text("")
+
+    with patch("build.write_headline", return_value="Quiet week."):
+        monkeypatch.setattr("sys.argv", ["build.py", "--week", "2026-W34"])
+        build.main()
+
+    issue = json.loads((tmp_path / "data" / "2026-W34.json").read_text())
+    assert issue["title"] == ""
+
+
 def test_main_accepts_date_instead_of_week(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_sources_yaml(tmp_path)
