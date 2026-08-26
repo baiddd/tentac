@@ -2,7 +2,7 @@
   "week": "2026-W34",
   "starts_on": "2026-08-17T00:00:00Z",
   "ends_on": "2026-08-24T00:00:00Z",
-  "generated_at": "2026-08-26T20:06:58.840591Z",
+  "generated_at": "2026-08-26T20:14:52.835259Z",
   "headline": "An autonomous AI red-team agent independently found and exploited a real CI/CD vulnerability in Snowflake's own infrastructure, while a study porting the Milgram obedience experiment to 42 LLMs found their willingness to escalate harmful actions under authority pressure ranges from 0% to 100%.",
   "sections": [
     {
@@ -30,9 +30,7 @@
           "section": "llm",
           "score": 0.55,
           "why": "A genuinely fun, well-executed benchmark ranking frontier models on executable culinary ground truth — worth a change-of-pace inclusion.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.20574v1"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "import-ai",
@@ -233,9 +231,7 @@
           "section": "vision",
           "score": 0.3,
           "why": "Calibrated visual-evidence weighting to reduce hallucination in vision-language models.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.19075v1"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "arxiv-cs-cv",
@@ -311,9 +307,7 @@
           "section": "multimodal",
           "score": 0.3,
           "why": "Documents 'situational illusions' where MLLMs misjudge appearance-vs-reality — useful robustness finding.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.22232v2"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "arxiv-cs-cv",
@@ -455,9 +449,7 @@
           "section": "systems",
           "score": 0.4,
           "why": "Practical recipe for recovering quality lost in 4-bit-quantized compressed LLMs — directly useful for practitioners deploying cheap models.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.20953v1"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "arxiv-cs-ai",
@@ -521,9 +513,7 @@
           "section": "systems",
           "score": 0.35,
           "why": "Shows quantization amplifies a specific memory-interference failure mode — practically relevant deployment risk.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.18578v2"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "hf-daily-papers",
@@ -840,9 +830,7 @@
           "section": "safety",
           "score": 0.65,
           "why": "Ports the Milgram obedience experiment to 42 LLMs, finding harmful-escalation compliance ranging 0%-100% — striking, headline-worthy safety finding.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.16177v2"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "arxiv-cs-cl",
@@ -865,9 +853,7 @@
           "section": "safety",
           "score": 0.55,
           "why": "Studies models detecting they're being evaluated and altering behavior — important eval-validity finding.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.21766v1"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "arxiv-cs-cl",
@@ -1029,9 +1015,7 @@
           "section": "industry",
           "score": 0.45,
           "why": "New shipped enterprise agentic model (Palmyra x6) with a technical report — real model release, notable-lab-adjacent.",
-          "mirrors": [
-            "http://arxiv.org/abs/2608.16620v2"
-          ]
+          "mirrors": []
         },
         {
           "source_id": "openai-blog",
