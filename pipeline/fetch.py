@@ -18,13 +18,36 @@ from datetime import datetime, timedelta, timezone
 
 from models import RawItem
 
+# Some sites 403 the default python-httpx / python-requests user-agent
+# string outright, independent of IP reputation (confirmed for science.org
+# and Substack feeds). A realistic browser UA costs nothing and recovers
+# those; it does NOT get past sites doing real bot-challenge/fingerprint
+# checks (Cloudflare-style), which need a different approach entirely.
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    )
+}
+
 
 def fetch_rss(source: dict, since: datetime, until: datetime) -> list[RawItem]:
-    """feedparser. Fall back to <updated> when <published> is missing."""
+    """feedparser. Fall back to <updated> when <published> is missing.
+
+    A few sites (confirmed: cisa.gov) 403 httpx specifically — identical
+    URL, identical headers, only the client library differs, and requests
+    (a different but equally standard TLS stack) gets a clean 200. This is
+    a TLS-handshake fingerprint quirk, not an active bot challenge, so
+    retry once with requests on a 403 rather than failing the source.
+    """
     import feedparser
     import httpx
 
-    response = httpx.get(source["url"], follow_redirects=True, timeout=30)
+    response = httpx.get(source["url"], follow_redirects=True, timeout=30, headers=_HEADERS)
+    if response.status_code == 403:
+        import requests
+
+        response = requests.get(source["url"], timeout=30, headers=_HEADERS, allow_redirects=True)
     response.raise_for_status()
     parsed = feedparser.parse(response.text)
     items: list[RawItem] = []
@@ -62,18 +85,25 @@ def fetch_arxiv(source: dict, since: datetime, until: datetime) -> list[RawItem]
     start = 0
     page_size = 100
     while True:
-        response = httpx.get(
-            "http://export.arxiv.org/api/query",
-            params={
-                "search_query": f"cat:{source['category']}",
-                "sortBy": "submittedDate",
-                "sortOrder": "descending",
-                "start": start,
-                "max_results": page_size,
-            },
-            follow_redirects=True,
-            timeout=30,
-        )
+        for attempt in range(3):
+            try:
+                response = httpx.get(
+                    "http://export.arxiv.org/api/query",
+                    params={
+                        "search_query": f"cat:{source['category']}",
+                        "sortBy": "submittedDate",
+                        "sortOrder": "descending",
+                        "start": start,
+                        "max_results": page_size,
+                    },
+                    follow_redirects=True,
+                    timeout=60,
+                )
+                break
+            except httpx.TimeoutException:
+                if attempt == 2:
+                    raise
+                time.sleep(5)
         response.raise_for_status()
         parsed = feedparser.parse(response.text)
         if not parsed.entries:
@@ -144,7 +174,15 @@ def fetch_hf_daily(source: dict, since: datetime, until: datetime) -> list[RawIt
 
 
 def fetch_openreview(source: dict, since: datetime, until: datetime) -> list[RawItem]:
-    """Only returns anything during a decision wave. Empty result is normal."""
+    """Only returns anything during a decision wave. Empty result is normal.
+
+    Note: as of 2026-08, this endpoint returns a Cloudflare-style active
+    challenge (403 ChallengeRequiredError) rather than serving results at
+    all, independent of headers. That's a deliberate anti-bot barrier, not
+    a stale-URL or UA problem — see the linked issue before attempting a
+    "fix" here; it needs legitimate OpenReview API credentials, not a
+    client-side workaround.
+    """
     import httpx
 
     items: list[RawItem] = []
@@ -154,6 +192,7 @@ def fetch_openreview(source: dict, since: datetime, until: datetime) -> list[Raw
             params={"invitation": f"{venue}/-/Decision", "limit": 1000},
             follow_redirects=True,
             timeout=30,
+            headers=_HEADERS,
         )
         response.raise_for_status()
         for note in response.json().get("notes", []):
@@ -175,46 +214,84 @@ def fetch_openreview(source: dict, since: datetime, until: datetime) -> list[Raw
 
 
 def fetch_github_advisories(source: dict, since: datetime, until: datetime) -> list[RawItem]:
-    """GraphQL securityAdvisories(ecosystem: PIP|NPM). Needs GITHUB_TOKEN."""
+    """GraphQL securityVulnerabilities(ecosystem: PIP|NPM). Needs GITHUB_TOKEN.
+
+    The `securityAdvisories(ecosystem: ...)` query this originally called
+    does not exist in GitHub's schema — `ecosystem` is only a valid
+    argument on `securityVulnerabilities`, confirmed via introspection.
+    That query has no publishedSince filter, only orderBy UPDATED_AT, so
+    we paginate ordered by update time and stop once updated_at < since:
+    published_at <= updated_at always holds, so nothing published in
+    [since, until) can appear past that point. Each item is then kept
+    only if its own published_at (not updated_at) falls in the window —
+    an old advisory that was merely edited this week is correctly
+    excluded, not reported as newly published.
+
+    A single advisory can affect multiple packages, so the same GHSA ID
+    can appear once per affected package within one ecosystem — dedupe
+    on ghsaId across both ecosystem loops.
+    """
     import os
 
     import httpx
 
     query = """
-    query($ecosystem: SecurityAdvisoryEcosystem!, $since: DateTime!) {
-      securityAdvisories(ecosystem: $ecosystem, first: 100, publishedSince: $since,
-                          orderBy: {field: PUBLISHED_AT, direction: DESC}) {
-        nodes { ghsaId summary publishedAt permalink identifiers { type value } }
+    query($ecosystem: SecurityAdvisoryEcosystem!, $after: String) {
+      securityVulnerabilities(ecosystem: $ecosystem, first: 100, after: $after,
+                               orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          updatedAt
+          advisory { ghsaId summary publishedAt permalink identifiers { type value } }
+        }
       }
     }
     """
     token = os.environ["GITHUB_TOKEN"]
     items: list[RawItem] = []
+    seen_ghsa_ids: set[str] = set()
     for ecosystem in ("PIP", "NPM"):
-        response = httpx.post(
-            source["url"],
-            json={"query": query, "variables": {"ecosystem": ecosystem, "since": since.isoformat()}},
-            headers={"Authorization": f"Bearer {token}"},
-            follow_redirects=True,
-            timeout=30,
-        )
-        response.raise_for_status()
-        nodes = response.json()["data"]["securityAdvisories"]["nodes"]
-        for node in nodes:
-            published_at = datetime.fromisoformat(node["publishedAt"].replace("Z", "+00:00"))
-            if not (since <= published_at < until):
-                continue
-            cve_ids = [i["value"] for i in node["identifiers"] if i["type"] == "CVE"]
-            items.append(
-                RawItem(
-                    source_id=source["id"],
-                    kind="advisory",
-                    title=node["summary"],
-                    url=node["permalink"],
-                    published_at=published_at,
-                    meta={"cve_ids": cve_ids} if cve_ids else {},
-                )
+        after = None
+        while True:
+            response = httpx.post(
+                source["url"],
+                json={"query": query, "variables": {"ecosystem": ecosystem, "after": after}},
+                headers={"Authorization": f"Bearer {token}", **_HEADERS},
+                follow_redirects=True,
+                timeout=30,
             )
+            response.raise_for_status()
+            payload = response.json()
+            if "errors" in payload:
+                raise RuntimeError(f"GitHub GraphQL error for {source['id']}: {payload['errors']}")
+            page = payload["data"]["securityVulnerabilities"]
+            stop = False
+            for node in page["nodes"]:
+                updated_at = datetime.fromisoformat(node["updatedAt"].replace("Z", "+00:00"))
+                if updated_at < since:
+                    stop = True
+                    break
+                advisory = node["advisory"]
+                if advisory["ghsaId"] in seen_ghsa_ids:
+                    continue
+                published_at = datetime.fromisoformat(advisory["publishedAt"].replace("Z", "+00:00"))
+                if not (since <= published_at < until):
+                    continue
+                seen_ghsa_ids.add(advisory["ghsaId"])
+                cve_ids = [i["value"] for i in advisory["identifiers"] if i["type"] == "CVE"]
+                items.append(
+                    RawItem(
+                        source_id=source["id"],
+                        kind="advisory",
+                        title=advisory["summary"],
+                        url=advisory["permalink"],
+                        published_at=published_at,
+                        meta={"cve_ids": cve_ids} if cve_ids else {},
+                    )
+                )
+            if stop or not page["pageInfo"]["hasNextPage"]:
+                break
+            after = page["pageInfo"]["endCursor"]
     return items
 
 
@@ -245,10 +322,14 @@ SELECTORS: dict[str, dict[str, str]] = {
         "link": "a",
         "date": "time",
     },
-    "deepmind-safety": {
-        "item": "article",
-        "title": "h3",
-        "link": "a",
+    "anthropic-news": {
+        # The page also renders a "Featured" hero grid with overlapping
+        # articles in different markup (h2/h4 titles, no reliable class).
+        # PublicationList is the plain reverse-chron list, covers every
+        # recent post, and is what we want for weekly discovery.
+        "item": "a[class*='PublicationList']",
+        "title": "span[class*='title']",
+        "link": "",
         "date": "time",
     },
     "uk-aisi": {
@@ -260,11 +341,30 @@ SELECTORS: dict[str, dict[str, str]] = {
 }
 
 
+def _parse_scrape_date(date_str: str) -> datetime | None:
+    """ISO first (most sites); fall back to "Mon D, YYYY" (e.g. anthropic.com's
+    visible card dates, which carry no machine-readable datetime attribute).
+    Date-only formats resolve to midnight UTC — fine for week-window filtering.
+    """
+    date_str = date_str.strip()
+    try:
+        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(date_str, "%b %d, %Y").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     """Last resort for lab blogs with no feed. httpx + selectolax.
 
     Keep one selector per source in a SELECTORS dict in fetch.py so breakage
-    is visible and repairable in one place.
+    is visible and repairable in one place. An empty/missing "link" selector
+    means the item node itself is the link (its own href is used) — some
+    sites (anthropic.com/news) wrap the whole card in a single <a>, with no
+    separate inner link to select.
     """
     from urllib.parse import urljoin
 
@@ -272,21 +372,20 @@ def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem
     from selectolax.parser import HTMLParser
 
     selectors = SELECTORS[source["id"]]
-    response = httpx.get(source["url"], timeout=30, follow_redirects=True)
+    response = httpx.get(source["url"], timeout=30, follow_redirects=True, headers=_HEADERS)
     response.raise_for_status()
     tree = HTMLParser(response.text)
 
     items: list[RawItem] = []
     for node in tree.css(selectors["item"]):
         title_node = node.css_first(selectors["title"])
-        link_node = node.css_first(selectors["link"])
+        link_node = node if not selectors.get("link") else node.css_first(selectors["link"])
         date_node = node.css_first(selectors["date"])
         if not (title_node and link_node and date_node):
             continue
         date_str = date_node.attributes.get("datetime") or date_node.text()
-        try:
-            published_at = datetime.fromisoformat(date_str.strip().replace("Z", "+00:00"))
-        except ValueError:
+        published_at = _parse_scrape_date(date_str)
+        if published_at is None:
             continue
         if not (since <= published_at < until):
             continue
@@ -357,6 +456,7 @@ def main() -> None:
 
     sources = _load_sources(only)
     stats = {"sources_ok": 0, "sources_failed": 0, "items": 0}
+    failures: list[tuple[str, str]] = []
     out_dir = "data/raw"
     os.makedirs(out_dir, exist_ok=True)
     out_path = f"{out_dir}/{week}.jsonl"
@@ -365,14 +465,17 @@ def main() -> None:
         for source in sources:
             fetcher = FETCHERS.get(source["kind"])
             if fetcher is None:
-                print(f"[{source['id']}] no fetcher for kind={source['kind']!r}, skipping")
+                reason = f"no fetcher for kind={source['kind']!r}"
+                print(f"[{source['id']}] SKIPPED: {reason}")
                 stats["sources_failed"] += 1
+                failures.append((source["id"], reason))
                 continue
             try:
                 items = fetcher(source, since, until)
             except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
                 print(f"[{source['id']}] FAILED: {exc}")
                 stats["sources_failed"] += 1
+                failures.append((source["id"], str(exc)))
                 continue
             for item in items:
                 out.write(item.model_dump_json() + "\n")
@@ -381,6 +484,12 @@ def main() -> None:
             print(f"[{source['id']}] {len(items)} items")
 
     print(f"done: {stats}")
+    if failures:
+        print(f"\n=== {len(failures)} source(s) failed this run ===")
+        for source_id, reason in failures:
+            print(f"  - {source_id}: {reason}")
+    else:
+        print("\nall sources fetched successfully")
 
 
 if __name__ == "__main__":

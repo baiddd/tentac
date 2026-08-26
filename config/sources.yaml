@@ -140,7 +140,16 @@ papers:
     tier: 1
     cadence: burst          # NeurIPS/ICLR/ICML land in annual waves, not weekly
     venues: [NeurIPS.cc, ICLR.cc, ICML.cc]
-    note: "Treat as a special edition when a decision wave drops. Do not expect weekly volume."
+    note: >
+      Treat as a special edition when a decision wave drops. Do not expect
+      weekly volume. As of 2026-08 this endpoint returns a genuine active
+      Cloudflare-style challenge (403 ChallengeRequiredError) regardless of
+      client library (confirmed with both httpx and requests) — not a
+      stale-URL or fingerprint quirk. Fixing this needs a legitimate
+      OpenReview API login (free account + API key), not a workaround; left
+      enabled since it costs nothing when it fails and would self-heal if
+      OpenReview relaxes this. Until then, manual inclusion of standout
+      accepted papers during a decision wave is the fallback.
     sections: [llm, vision, multimodal, systems]
 
 # -----------------------------------------------------------------------------
@@ -178,14 +187,21 @@ journals:
 # -----------------------------------------------------------------------------
 labs:
   - id: anthropic-news
-    kind: rss
-    url: https://www.anthropic.com/rss.xml
+    kind: scrape
+    url: https://www.anthropic.com/news
     tier: 1
+    note: >
+      No RSS feed as of 2026-08 (anthropic.com/rss.xml 404s). Sitemap
+      lastmod looked promising but doesn't track real publish dates —
+      confirmed multiple older articles' lastmod bumped to the same recent
+      timestamp by an unrelated site update, while the /news index page's
+      visible per-card dates are correct. Scrape that index page instead.
     sections: [llm, safety]
   - id: openai-blog
-    kind: scrape
-    url: https://openai.com/news/
+    kind: rss
+    url: https://openai.com/news/rss.xml
     tier: 1
+    note: "openai.com/news/ (the HTML page) blocks httpx at the TLS-fingerprint level, but this feed URL is unaffected — confirmed 2026-08."
     sections: [llm, industry]
   - id: deepmind-blog
     kind: rss
@@ -260,7 +276,7 @@ security:
     sections: [security]
   - id: socket-blog
     kind: rss
-    url: https://socket.dev/blog/rss.xml
+    url: https://socket.dev/api/blog/feed.atom
     tier: 1
     sections: [security]
   - id: snyk-blog
@@ -299,7 +315,7 @@ security:
     kind: api
     url: https://api.github.com/graphql
     tier: 2
-    note: "GraphQL securityAdvisories. Filter ecosystem in (PIP, NPM). Needs GITHUB_TOKEN."
+    note: "GraphQL securityVulnerabilities(ecosystem: PIP|NPM), ordered by UPDATED_AT (no publishedSince filter exists on this field). Needs GITHUB_TOKEN."
     sections: [security]
   - id: osv
     kind: api
@@ -318,9 +334,10 @@ safety:
     tier: 1
     sections: [safety]
   - id: deepmind-safety
-    kind: scrape
-    url: https://deepmindsafetyresearch.medium.com/
+    kind: rss
+    url: https://deepmindsafetyresearch.medium.com/feed
     tier: 2
+    note: "The scraped HTML homepage blocked httpx at the TLS-fingerprint level; Medium's own /feed RSS endpoint doesn't — confirmed 2026-08."
     sections: [safety]
   - id: uk-aisi
     kind: scrape
@@ -337,5 +354,14 @@ safety:
     kind: api
     url: https://incidentdatabase.ai/api
     tier: 2
-    note: "Powers the 'incidents this week' callout."
+    note: >
+      Powers the 'incidents this week' callout. As of 2026-08 the GraphQL
+      endpoint returns "Forbidden - Invalid origin: API access is
+      restricted to authorized domains" for any non-browser client,
+      confirmed independent of client library (httpx and requests both
+      blocked identically). This is a deliberate origin allowlist, not a
+      fingerprint issue — no legitimate fix without either an official API
+      key (not currently offered) or the database publishing a public
+      export. Left enabled since it costs nothing when it fails; check
+      incidentdatabase.ai manually for notable incidents in the meantime.
     sections: [safety, security]
