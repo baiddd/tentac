@@ -44,10 +44,9 @@ that's the pipeline's name, not the site's brand. Only user-facing text
    `data/2026-W34.json`. Review the diff, commit, and push to the same
    branch.
 
-   Before finishing, optionally check the sources `config/sources.yaml`
+   Before finishing, optionally check the source `config/sources.yaml`
    documents as blocked with no automated fix (currently `openreview` —
-   active bot challenge — and `ai-incident-database` — origin-restricted
-   API; see the `note:` on each). If something standout turns up, hand-add
+   active bot challenge; see its `note:`). If something standout turns up, hand-add
    it to `data/raw/<week>.jsonl` as a `RawItem`-shaped JSON line (see
    `pipeline/models.py`) before running `/weekly-analysis`, so it flows
    through prefilter/classification/ranking like everything else.

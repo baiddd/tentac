@@ -100,31 +100,37 @@ papers:
     kind: arxiv
     category: cs.CL
     tier: 2
+    family: arxiv
     sections: [llm, multimodal]
   - id: arxiv-cs-cv
     kind: arxiv
     category: cs.CV
     tier: 2
+    family: arxiv
     sections: [vision, multimodal]
   - id: arxiv-cs-lg
     kind: arxiv
     category: cs.LG
     tier: 2
+    family: arxiv
     sections: [llm, systems]
   - id: arxiv-cs-ai
     kind: arxiv
     category: cs.AI
     tier: 2
+    family: arxiv
     sections: [llm, safety]
   - id: arxiv-cs-cr
     kind: arxiv
     category: cs.CR
     tier: 2
+    family: arxiv
     sections: [security, safety]
   - id: arxiv-eess-iv
     kind: arxiv
     category: eess.IV
     tier: 3
+    family: arxiv
     sections: [vision]
 
   - id: hf-daily-papers
@@ -318,6 +324,13 @@ security:
     tier: 2
     note: "GraphQL securityVulnerabilities(ecosystem: PIP|NPM), ordered by UPDATED_AT (no publishedSince filter exists on this field). Needs GITHUB_TOKEN."
     sections: [security]
+
+# osv was removed 2026-08-26 (dropped, not just disabled): its API
+# (https://api.osv.dev/v1/query) needs a specific package name to query —
+# it's not a general discovery feed. Its own note said "use to enrich
+# items, not as a discovery feed," and no fixed AI/ML package watchlist
+# was worth maintaining for this. github-advisories already covers
+# PIP/NPM supply-chain advisories more broadly.
 
 # -----------------------------------------------------------------------------
 # SAFETY & GOVERNANCE — slower cadence, closer to papers than to news

@@ -412,6 +412,7 @@ def fetch_the_batch(source: dict, since: datetime, until: datetime) -> list[RawI
     """
     import json
     import re
+    import time
 
     import httpx
 
@@ -433,16 +434,25 @@ def fetch_the_batch(source: dict, since: datetime, until: datetime) -> list[RawI
     items: list[RawItem] = []
     for entry in entries:
         url = entry["url"]
-        article_response = httpx.get(
-            url, timeout=30, follow_redirects=True, headers=_HEADERS
-        )
-        article_response.raise_for_status()
+        try:
+            article_response = httpx.get(
+                url, timeout=30, follow_redirects=True, headers=_HEADERS
+            )
+            article_response.raise_for_status()
+        except httpx.HTTPError:
+            continue
+        time.sleep(0.3)
         date_match = re.search(
             r'"datePublished"\s*:\s*"([^"]+)"', article_response.text
         )
         if date_match is None:
             continue
-        published_at = datetime.fromisoformat(date_match.group(1))
+        try:
+            published_at = datetime.fromisoformat(date_match.group(1))
+        except ValueError:
+            continue
+        if published_at.tzinfo is None:
+            continue
         if not (since <= published_at < until):
             continue
         items.append(
@@ -519,6 +529,11 @@ def main() -> None:
     only = set(args.only.split(",")) if args.only else None
 
     sources = _load_sources(only)
+    if only is not None:
+        unmatched = only - {s["id"] for s in sources}
+        for source_id in sorted(unmatched):
+            print(f"[{source_id}] WARNING: not found in config/sources.yaml, nothing to fetch")
+
     stats = {"sources_ok": 0, "sources_failed": 0, "items": 0}
     failures: list[tuple[str, str]] = []
     out_dir = "data/raw"
@@ -556,7 +571,12 @@ def main() -> None:
                     line = line.strip()
                     if not line:
                         continue
-                    source_id = json.loads(line)["source_id"]
+                    try:
+                        source_id = json.loads(line)["source_id"]
+                    except (json.JSONDecodeError, KeyError) as exc:
+                        print(f"WARNING: could not parse existing line, preserving as-is: {exc}")
+                        preserved_lines.append(line)
+                        continue
                     if source_id not in refetched_lines:
                         preserved_lines.append(line)
         all_lines = preserved_lines + [

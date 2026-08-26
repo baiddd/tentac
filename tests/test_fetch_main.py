@@ -244,3 +244,85 @@ papers:
     lines = [json.loads(line) for line in (raw_dir / "2026-W34.jsonl").read_text().splitlines()]
     assert len(lines) == 1, "a full run (no --only) must still fully overwrite, not merge"
     assert lines[0]["source_id"] == "good-source"
+
+
+def test_main_warns_on_unmatched_only_source_id_but_still_fetches_real_ones(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: real-source
+    kind: rss
+    url: https://example.com/feed.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+
+    def fake_fetch_rss(source, since, until):
+        return [_item(source["id"], "https://example.com/a")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(
+        fetch.sys,
+        "argv",
+        ["fetch.py", "--week", "2026-W34", "--only", "real-source,nonexistent-source"],
+    )
+
+    fetch.main()
+
+    captured = capsys.readouterr()
+    assert "nonexistent-source" in captured.out
+    assert "WARNING" in captured.out
+
+    out_path = tmp_path / "data" / "raw" / "2026-W34.jsonl"
+    lines = [json.loads(line) for line in out_path.read_text().splitlines()]
+    assert len(lines) == 1
+    assert lines[0]["source_id"] == "real-source"
+
+
+def test_main_preserves_malformed_line_in_existing_raw_file_during_merge(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: source-a
+    kind: rss
+    url: https://example.com/a.xml
+    tier: 1
+    sections: [llm]
+  - id: source-b
+    kind: rss
+    url: https://example.com/b.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    valid_line = _item("source-a", "https://example.com/old-a").model_dump_json()
+    malformed_line = "not valid json"
+    (raw_dir / "2026-W34.jsonl").write_text(valid_line + "\n" + malformed_line + "\n")
+
+    def fake_fetch_rss(source, since, until):
+        assert source["id"] == "source-b", "only source-b should be re-fetched"
+        return [_item("source-b", "https://example.com/new-b")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(
+        fetch.sys, "argv", ["fetch.py", "--week", "2026-W34", "--only", "source-b"]
+    )
+
+    fetch.main()
+
+    captured = capsys.readouterr()
+    assert "WARNING" in captured.out
+
+    lines = (raw_dir / "2026-W34.jsonl").read_text().splitlines()
+    assert malformed_line in lines, "malformed line must be preserved verbatim, not dropped"
+    assert valid_line in lines, "valid pre-existing line must still be preserved"
+    parsed = [json.loads(line) for line in lines if line != malformed_line]
+    by_source = {item["source_id"]: item["url"] for item in parsed}
+    assert by_source["source-b"] == "https://example.com/new-b"

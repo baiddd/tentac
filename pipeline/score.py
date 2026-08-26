@@ -17,11 +17,16 @@ from models import RawItem, ScoredItem, SectionId
 
 
 SOURCE_TIERS: dict[str, int] = {}
+SOURCE_FAMILIES: dict[str, str] = {}
 RELEVANCE_KEYWORDS: list[str] = []
 
 
 def _tier(source_id: str) -> int:
     return SOURCE_TIERS.get(source_id, 3)
+
+
+def _family(source_id: str) -> str:
+    return SOURCE_FAMILIES.get(source_id, source_id)
 
 
 def _load_seen() -> set[str]:
@@ -253,11 +258,14 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
               + 0.20 * source_tier
 
     Cap at 6 items per section, 8 for security during an active incident.
-    Within a section, no single source_id may contribute more than 3 items
-    — a structural diversity floor so one high-volume source (e.g. an
-    arXiv category feed with hundreds of weekly candidates) can't fill an
-    entire section on volume alone. A section with 0 items renders as
-    "quiet week" — do not pad it.
+    Within a section, no single source family — such as all arXiv category
+    feeds sharing the family `arxiv` — may contribute more than 3 items to
+    a section — a structural diversity floor so one high-volume source
+    (e.g. an arXiv category feed with hundreds of weekly candidates) can't
+    fill an entire section on volume alone. A source with no declared
+    family (config/sources.yaml) is its own family, keyed on its
+    source_id. A section with 0 items renders as "quiet week" — do not pad
+    it.
     """
     import math
     from collections import defaultdict
@@ -295,10 +303,10 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
         for item in section_items:
             if len(survivors) >= cap:
                 break
-            if per_source_count[item.source_id] >= MAX_PER_SOURCE:
+            if per_source_count[_family(item.source_id)] >= MAX_PER_SOURCE:
                 continue
             survivors.append(item)
-            per_source_count[item.source_id] += 1
+            per_source_count[_family(item.source_id)] += 1
 
         ranked.extend(survivors)
     return ranked
@@ -320,6 +328,23 @@ def _load_source_tiers() -> dict[str, int]:
     return tiers
 
 
+def _load_source_families() -> dict[str, str]:
+    import os
+
+    import yaml
+
+    if not os.path.exists("config/sources.yaml"):
+        return {}
+    with open("config/sources.yaml", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    families = {}
+    for group in ("papers", "journals", "labs", "news", "security", "safety"):
+        for source in config.get(group, []):
+            if "family" in source:
+                families[source["id"]] = source["family"]
+    return families
+
+
 def _load_relevance_keywords() -> list[str]:
     import os
 
@@ -333,7 +358,7 @@ def _load_relevance_keywords() -> list[str]:
 
 
 def main() -> None:
-    global SOURCE_TIERS, RELEVANCE_KEYWORDS
+    global SOURCE_TIERS, SOURCE_FAMILIES, RELEVANCE_KEYWORDS
     import os
 
     from dates import week_from_date
@@ -362,6 +387,7 @@ def main() -> None:
     args.week = week_from_date(args.date) if args.date else args.week
 
     SOURCE_TIERS = _load_source_tiers()
+    SOURCE_FAMILIES = _load_source_families()
     RELEVANCE_KEYWORDS = _load_relevance_keywords()
 
     if args.stage == "prefilter":

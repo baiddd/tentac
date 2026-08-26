@@ -103,3 +103,24 @@ def test_rank_caps_three_per_source_within_a_section(monkeypatch):
     assert by_source.count("dominant") == 3, "no source should exceed 3 items in a section"
     assert by_source.count("other") == 2, "lower-scoring source should fill the freed-up slots"
     assert by_source.count("filler") == 1, "third source should fill the last freed-up slot"
+
+
+def test_rank_caps_three_per_family_across_different_source_ids(monkeypatch):
+    monkeypatch.setattr("score.SOURCE_TIERS", {"arxiv-a": 2, "arxiv-b": 2, "other": 2, "filler": 2})
+    monkeypatch.setattr("score.SOURCE_FAMILIES", {"arxiv-a": "arxiv", "arxiv-b": "arxiv"})
+    # arxiv-a and arxiv-b share the "arxiv" family (like real arxiv-cs-cl/arxiv-cs-lg
+    # do via config/sources.yaml). Without family-level capping, each of the two
+    # source_ids would independently cap at 3 (6 total), still crowding out every
+    # other source — reproducing the exact bug the reviewer found against real data.
+    arxiv_a_items = [_scored("llm", 0.9 - i * 0.01, source_id="arxiv-a") for i in range(4)]
+    arxiv_b_items = [_scored("llm", 0.8 - i * 0.01, source_id="arxiv-b") for i in range(4)]
+    other_items = [_scored("llm", 0.5, source_id="other") for _ in range(2)]
+    filler_items = [_scored("llm", 0.4, source_id="filler") for _ in range(1)]
+    result = rank(arxiv_a_items + arxiv_b_items + other_items + filler_items)
+
+    assert len(result) == 6, "section cap of 6 should still apply"
+    by_source = [item.source_id for item in result]
+    arxiv_count = sum(1 for s in by_source if s in ("arxiv-a", "arxiv-b"))
+    assert arxiv_count == 3, "combined arxiv family (across both source_ids) must not exceed 3"
+    assert by_source.count("other") == 2, "other family fills freed-up slots"
+    assert by_source.count("filler") == 1, "filler family fills the last freed-up slot"
