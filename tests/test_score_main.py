@@ -6,13 +6,11 @@ import score
 from models import ScoredItem
 
 
-def test_main_prefilter_stage_writes_prefiltered_raw_items(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def _write_raw_item(tmp_path, week):
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "sources.yaml").write_text(
         "papers:\n  - id: s\n    kind: rss\n    tier: 1\n    sections: [llm]\n"
     )
-    (tmp_path / "data" / "raw").mkdir(parents=True)
     raw_item = {
         "source_id": "s",
         "kind": "paper",
@@ -23,7 +21,13 @@ def test_main_prefilter_stage_writes_prefiltered_raw_items(tmp_path, monkeypatch
         "authors": [],
         "meta": {},
     }
-    (tmp_path / "data" / "raw" / "2026-W34.jsonl").write_text(json.dumps(raw_item) + "\n")
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    (tmp_path / "data" / "raw" / f"{week}.jsonl").write_text(json.dumps(raw_item) + "\n")
+
+
+def test_main_prefilter_stage_writes_prefiltered_raw_items(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_raw_item(tmp_path, "2026-W34")
 
     monkeypatch.setattr("sys.argv", ["score.py", "--week", "2026-W34", "--stage", "prefilter"])
     score.main()
@@ -73,23 +77,8 @@ def test_main_rejects_unknown_stage(tmp_path, monkeypatch):
 
 def test_main_accepts_date_instead_of_week(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        "papers:\n  - id: s\n    kind: rss\n    tier: 1\n    sections: [llm]\n"
-    )
-    (tmp_path / "data" / "raw").mkdir(parents=True)
-    raw_item = {
-        "source_id": "s",
-        "kind": "paper",
-        "title": "A Paper",
-        "url": "https://example.com/a",
-        "published_at": "2026-08-18T00:00:00Z",
-        "summary": "Abstract",
-        "authors": [],
-        "meta": {},
-    }
     # 2026-08-24 falls in ISO week 2026-W35.
-    (tmp_path / "data" / "raw" / "2026-W35.jsonl").write_text(json.dumps(raw_item) + "\n")
+    _write_raw_item(tmp_path, "2026-W35")
 
     monkeypatch.setattr(
         "sys.argv", ["score.py", "--date", "2026-08-24", "--stage", "prefilter"]

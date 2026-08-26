@@ -72,7 +72,7 @@ def test_fetch_the_batch_skips_one_bad_article_and_keeps_the_rest():
         return_value=httpx.Response(404)
     )
     respx.get("https://www.deeplearning.ai/the-batch/an-old-article").mock(
-        return_value=httpx.Response(200, text=NEW_ARTICLE_HTML.replace("An Old Article", "Renamed Article"))
+        return_value=httpx.Response(200, text=NEW_ARTICLE_HTML)
     )
     source = {"id": "the-batch", "url": "https://www.deeplearning.ai/the-batch/tag/research"}
     since = datetime(2026, 8, 17, tzinfo=timezone.utc)

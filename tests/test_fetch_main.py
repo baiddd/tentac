@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pytest
 
@@ -17,24 +16,30 @@ def _item(source_id: str, url: str) -> RawItem:
     )
 
 
+def _sources_yaml(*ids_and_tiers: tuple[str, int]) -> str:
+    """Build a minimal single-group sources.yaml, one rss source per (id, tier) pair."""
+    if not ids_and_tiers:
+        return "papers: []\n"
+    lines = ["papers:"]
+    for source_id, tier in ids_and_tiers:
+        lines += [
+            f"  - id: {source_id}",
+            "    kind: rss",
+            f"    url: https://example.com/{source_id}.xml",
+            f"    tier: {tier}",
+            "    sections: [llm]",
+        ]
+    return "\n".join(lines) + "\n"
+
+
+def _write_sources_yaml(tmp_path, *ids_and_tiers: tuple[str, int]) -> None:
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(_sources_yaml(*ids_and_tiers))
+
+
 def test_main_writes_jsonl_and_survives_one_dead_source(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: good-source
-    kind: rss
-    url: https://example.com/feed.xml
-    tier: 1
-    sections: [llm]
-  - id: dead-source
-    kind: rss
-    url: https://example.com/dead.xml
-    tier: 2
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("good-source", 1), ("dead-source", 2))
 
     def fake_fetch_rss(source, since, until):
         if source["id"] == "dead-source":
@@ -60,17 +65,7 @@ papers:
 
 def test_main_prints_all_succeeded_when_no_failures(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: good-source
-    kind: rss
-    url: https://example.com/feed.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("good-source", 1))
 
     def fake_fetch_rss(source, since, until):
         return [_item(source["id"], "https://example.com/a")]
@@ -86,17 +81,7 @@ papers:
 
 def test_main_accepts_date_instead_of_week(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: good-source
-    kind: rss
-    url: https://example.com/feed.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("good-source", 1))
 
     def fake_fetch_rss(source, since, until):
         return [_item(source["id"], "https://example.com/a")]
@@ -113,8 +98,7 @@ papers:
 
 def test_main_rejects_week_and_date_together(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text("papers: []\n")
+    _write_sources_yaml(tmp_path)
 
     monkeypatch.setattr(
         fetch.sys, "argv", ["fetch.py", "--week", "2026-W34", "--date", "2026-08-24"]
@@ -126,22 +110,7 @@ def test_main_rejects_week_and_date_together(tmp_path, monkeypatch):
 
 def test_main_with_only_preserves_other_sources_existing_data(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: source-a
-    kind: rss
-    url: https://example.com/a.xml
-    tier: 1
-    sections: [llm]
-  - id: source-b
-    kind: rss
-    url: https://example.com/b.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("source-a", 1), ("source-b", 1))
     raw_dir = tmp_path / "data" / "raw"
     raw_dir.mkdir(parents=True)
     existing = [
@@ -170,22 +139,7 @@ papers:
 
 def test_main_with_only_preserves_prior_data_on_repeat_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: source-a
-    kind: rss
-    url: https://example.com/a.xml
-    tier: 1
-    sections: [llm]
-  - id: flaky-source
-    kind: rss
-    url: https://example.com/flaky.xml
-    tier: 2
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("source-a", 1), ("flaky-source", 2))
     raw_dir = tmp_path / "data" / "raw"
     raw_dir.mkdir(parents=True)
     existing = [
@@ -215,17 +169,7 @@ papers:
 
 def test_main_without_only_still_overwrites_fully(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: good-source
-    kind: rss
-    url: https://example.com/feed.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("good-source", 1))
     raw_dir = tmp_path / "data" / "raw"
     raw_dir.mkdir(parents=True)
     # Stale data from some earlier, differently-configured run.
@@ -248,17 +192,7 @@ papers:
 
 def test_main_warns_on_unmatched_only_source_id_but_still_fetches_real_ones(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: real-source
-    kind: rss
-    url: https://example.com/feed.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("real-source", 1))
 
     def fake_fetch_rss(source, since, until):
         return [_item(source["id"], "https://example.com/a")]
@@ -284,22 +218,7 @@ papers:
 
 def test_main_preserves_malformed_line_in_existing_raw_file_during_merge(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "sources.yaml").write_text(
-        """
-papers:
-  - id: source-a
-    kind: rss
-    url: https://example.com/a.xml
-    tier: 1
-    sections: [llm]
-  - id: source-b
-    kind: rss
-    url: https://example.com/b.xml
-    tier: 1
-    sections: [llm]
-"""
-    )
+    _write_sources_yaml(tmp_path, ("source-a", 1), ("source-b", 1))
     raw_dir = tmp_path / "data" / "raw"
     raw_dir.mkdir(parents=True)
     valid_line = _item("source-a", "https://example.com/old-a").model_dump_json()
