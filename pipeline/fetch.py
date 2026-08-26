@@ -85,18 +85,25 @@ def fetch_arxiv(source: dict, since: datetime, until: datetime) -> list[RawItem]
     start = 0
     page_size = 100
     while True:
-        response = httpx.get(
-            "http://export.arxiv.org/api/query",
-            params={
-                "search_query": f"cat:{source['category']}",
-                "sortBy": "submittedDate",
-                "sortOrder": "descending",
-                "start": start,
-                "max_results": page_size,
-            },
-            follow_redirects=True,
-            timeout=30,
-        )
+        for attempt in range(3):
+            try:
+                response = httpx.get(
+                    "http://export.arxiv.org/api/query",
+                    params={
+                        "search_query": f"cat:{source['category']}",
+                        "sortBy": "submittedDate",
+                        "sortOrder": "descending",
+                        "start": start,
+                        "max_results": page_size,
+                    },
+                    follow_redirects=True,
+                    timeout=60,
+                )
+                break
+            except httpx.TimeoutException:
+                if attempt == 2:
+                    raise
+                time.sleep(5)
         response.raise_for_status()
         parsed = feedparser.parse(response.text)
         if not parsed.entries:
