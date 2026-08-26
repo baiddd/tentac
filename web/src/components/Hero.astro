@@ -1,22 +1,32 @@
 ---
-// The homepage cover — full-bleed hero with the week's cover image, title,
-// and headline. Pairs with the fixed/scaling "tentac" logo whose scroll
-// behavior lives in index.astro's script (both halves of the same
-// persistent-header interaction described in the Figma comments).
-import { Image } from "astro:assets";
+// The homepage cover — full-bleed black hero with a decorative radial glow
+// (color-matched to the week's extracted palette), title, and headline.
+// Pairs with the fixed/scaling "tentac" logo whose scroll behavior lives
+// in index.astro's script (both halves of the same persistent-header
+// interaction described in the Figma comments).
 
 interface Props {
   weekLabel: string;
+  /** Short punchy title (Issue.title) — the large bold line. Falls back to
+   * `headline` when empty (issues published before this field existed). */
+  title: string;
+  /** Full descriptive sentence (Issue.headline) — shown as the smaller
+   * paragraph under the title. */
   headline: string;
-  coverImage?: ImageMetadata;
-  accentColor: string;
+  /** Three distinct colors pulled from the extracted palette (top glow,
+   * bottom fade, decorative light-gradiant blob) — matches Figma's cover,
+   * which uses three different hand-picked colors rather than one repeated
+   * accent. */
+  topColor: string;
+  bottomColor: string;
+  glowColor: string;
 }
-const { weekLabel, headline, coverImage, accentColor } = Astro.props;
+const { weekLabel, title, headline, topColor, bottomColor, glowColor } = Astro.props;
+const displayTitle = title || headline;
+const displayDescription = title ? headline : "";
 ---
-<div class="hero" style={`--hero-accent: ${accentColor}`}>
-  {coverImage && (
-    <Image src={coverImage} alt="" class="hero-bg" widths={[402, 804, 1200]} sizes="100vw" />
-  )}
+<div class="hero" style={`--hero-top-color: ${topColor}; --hero-bottom-color: ${bottomColor}; --hero-glow-color: ${glowColor}`}>
+  <div class="hero-light-gradiant" aria-hidden="true"></div>
   <div class="hero-top-gradient" aria-hidden="true"></div>
   <div class="hero-bottom-gradient" aria-hidden="true"></div>
 
@@ -33,5 +43,6 @@ const { weekLabel, headline, coverImage, accentColor } = Astro.props;
     <span class="hero-badge-rule" aria-hidden="true"></span>
   </div>
 
-  <p class="hero-headline">{headline}</p>
+  <p class="hero-title">{displayTitle}</p>
+  {displayDescription && <p class="hero-description">{displayDescription}</p>}
 </div>

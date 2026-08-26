@@ -3,16 +3,27 @@ import Layout from "../layouts/Layout.astro";
 import Hero from "../components/Hero.astro";
 import HeroSectionBlock from "../components/HeroSectionBlock.astro";
 import { getAllIssues } from "../lib/issues";
-import { getCoverImage, getSectionPalette } from "../lib/coverPalette";
+import { getSectionPalette } from "../lib/coverPalette";
 import "../styles/hero.css";
 
 const issues = getAllIssues();
 const latest = issues[0];
 
-const coverImage = latest ? getCoverImage(latest.week) : undefined;
+// The cover image is read directly off disk for color extraction only (see
+// coverPalette.ts) — it's never displayed itself, the hero shows a plain
+// black background with a color-matched decorative glow instead.
 const palette = latest ? await getSectionPalette(latest.week) : {};
 const defaultAccent = "#5ee6b0"; // matches --accent in global.css
-const heroAccent = (latest && palette[latest.sections[0]?.id as keyof typeof palette]) || defaultAccent;
+const paletteColors = latest
+  ? latest.sections.map((s) => palette[s.id as keyof typeof palette]).filter((c): c is string => Boolean(c))
+  : [];
+// Figma's cover uses three distinct colors (top glow, bottom fade, and the
+// decorative light-gradiant blob) rather than one repeated accent — pull
+// three different entries from the extracted palette for the same variety,
+// falling back gracefully as the palette shrinks.
+const heroTopColor = paletteColors[0] || defaultAccent;
+const heroBottomColor = paletteColors[paletteColors.length - 1] || heroTopColor;
+const heroGlowColor = paletteColors[Math.floor(paletteColors.length / 2)] || heroTopColor;
 
 function weekLabel(week: string): string {
   return week.replace("-", " - ");
@@ -23,9 +34,11 @@ function weekLabel(week: string): string {
     <div class="hero-page">
       <Hero
         weekLabel={weekLabel(latest.week)}
+        title={latest.title}
         headline={latest.headline}
-        coverImage={coverImage}
-        accentColor={heroAccent}
+        topColor={heroTopColor}
+        bottomColor={heroBottomColor}
+        glowColor={heroGlowColor}
       />
       <div class="hero-sections">
         {latest.sections.map((section) => (
@@ -65,7 +78,7 @@ function weekLabel(week: string): string {
       const subtitle = document.getElementById("hero-subtitle");
       if (!hero || !logo || !backdrop || !subtitle) return;
 
-      const LOGO_SCALE_START = 1.765; // 48px hero size / 27.2px mini size
+      const LOGO_SCALE_START = 1.466; // 40px hero size / 27.294px mini size
       const TRANSITION_ZONE = 160; // px of scroll over which the logo shrinks
       const SUBTITLE_FADE_DISTANCE = 50; // px of scroll for the subtitle fade
 

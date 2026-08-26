@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ImageMetadata } from "astro";
 import sharp from "sharp";
 
 // Automatically derives one accent color per section from a week's cover
@@ -167,29 +166,6 @@ function toAccentColor({ hue, saturation }: HueCandidate): string {
     [r, g, b] = hslToRgb(hue, Math.min(saturation, MAX_ACCENT_SATURATION), lightness);
   }
   return toHex(r, g, b);
-}
-
-// Astro-optimized cover image lookup (separate from the raw-fs read above,
-// which sharp needs for direct pixel access — this one goes through Vite's
-// asset pipeline so <Image> gets responsive widths/formats for free).
-const coverImageModules = import.meta.glob<{ default: ImageMetadata }>(
-  "../assets/covers/*.{jpg,jpeg,png,webp}",
-  { eager: true }
-);
-
-function weekFromCoverPath(path: string): string | null {
-  const match = path.match(/(\d{4}-W\d{2})\.[a-zA-Z]+$/);
-  return match ? match[1] : null;
-}
-
-const coverImageByWeek = new Map<string, ImageMetadata>();
-for (const [path, mod] of Object.entries(coverImageModules)) {
-  const week = weekFromCoverPath(path);
-  if (week) coverImageByWeek.set(week, mod.default);
-}
-
-export function getCoverImage(week: string): ImageMetadata | undefined {
-  return coverImageByWeek.get(week);
 }
 
 const paletteCache = new Map<string, Promise<SectionPalette>>();
