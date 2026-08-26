@@ -17,7 +17,7 @@
 
 .hero-logo {
   position: fixed;
-  top: 1.5rem;
+  top: 3.25rem; /* 1.5rem + 28px, to line up with the shorter top-logo-gradiant */
   left: var(--content-pad);
   z-index: 60;
   margin: 0;
@@ -33,12 +33,14 @@
 }
 
 /* Matches Figma's top-logo-gradiant: opaque black through 58.8% of its
- * height, then fades to transparent, plus a background blur so the logo
- * stays legible over busy scrolled content. */
+ * height, then fades to transparent. The blur is masked with the same
+ * gradient shape so it fades out progressively too, instead of stopping
+ * abruptly at the backdrop's edge. Height is 3/4 of the original 10.25rem
+ * (a quarter removed per the latest Figma pass). */
 .hero-logo-backdrop {
   position: fixed;
   inset: 0 0 auto 0;
-  height: 10.25rem;
+  height: 7.6875rem;
   z-index: 55;
   background: linear-gradient(
     to bottom,
@@ -48,6 +50,8 @@
   );
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  mask-image: linear-gradient(to bottom, black 0%, black 58.8%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 58.8%, transparent 100%);
   opacity: var(--backdrop-opacity, 0);
   transition: opacity 0.15s ease-out;
   pointer-events: none;
@@ -73,10 +77,11 @@
  * out to be exactly this: a circle, solid color fading to transparent). */
 .hero-light-gradiant {
   position: absolute;
-  top: -8%;
-  right: -20%;
+  top: 10%;
+  left: 100%; /* circle's center sits on the hero's right edge */
   width: 130%;
   aspect-ratio: 1;
+  transform: translateX(-50%);
   background: radial-gradient(circle, var(--hero-glow-color) 0%, transparent 70%);
   pointer-events: none;
 }
@@ -155,7 +160,7 @@
 .hero-title {
   margin: 0;
   font-family: var(--font-jakarta);
-  font-size: 1.7rem;
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1.25;
   color: #fff;
@@ -179,7 +184,7 @@
 
 .hero-section {
   position: relative;
-  padding: 3.5rem var(--content-pad) 2rem;
+  padding: 11.25rem var(--content-pad); /* 180px top and bottom */
   overflow: hidden;
 }
 
@@ -202,7 +207,7 @@
 .hero-section-title {
   margin: 0 0 0.25rem;
   font-family: var(--font-jakarta);
-  font-size: 1.7rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #fff;
 }
@@ -237,7 +242,7 @@
 .hero-section-glow {
   position: absolute;
   top: 0.5rem;
-  left: 50%;
+  left: 100%; /* circle's center sits on the section's right edge */
   width: 44rem;
   max-width: 175vw;
   aspect-ratio: 1;
@@ -252,20 +257,20 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  margin-top: 4rem;
+  margin-top: 11.25rem; /* 180px, between the section summary and the first item */
 }
 
 .hero-item-why {
   margin: 0;
   font-family: var(--font-literata);
-  font-size: 1rem;
+  font-size: 1.125rem;
   color: #fff;
 }
 
 .hero-item-spacer {
   width: 4rem;
   height: 5px;
-  margin: 1.1rem 0;
+  margin: 2.5rem 0; /* 40px */
   background: var(--section-color);
 }
 

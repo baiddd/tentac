@@ -18,12 +18,13 @@ const paletteColors = latest
   ? latest.sections.map((s) => palette[s.id as keyof typeof palette]).filter((c): c is string => Boolean(c))
   : [];
 // Figma's cover uses three distinct colors (top glow, bottom fade, and the
-// decorative light-gradiant blob) rather than one repeated accent — pull
-// three different entries from the extracted palette for the same variety,
-// falling back gracefully as the palette shrinks.
-const heroTopColor = paletteColors[0] || defaultAccent;
-const heroBottomColor = paletteColors[paletteColors.length - 1] || heroTopColor;
-const heroGlowColor = paletteColors[Math.floor(paletteColors.length / 2)] || heroTopColor;
+// decorative light-gradiant blob) rather than one repeated accent. The
+// bottom fade must match the first article's own color exactly, for a
+// seamless transition into it; top and the glow use other palette entries
+// for variety, falling back gracefully as the palette shrinks.
+const heroBottomColor = paletteColors[0] || defaultAccent;
+const heroTopColor = paletteColors[paletteColors.length - 1] || heroBottomColor;
+const heroGlowColor = paletteColors[Math.floor(paletteColors.length / 2)] || heroBottomColor;
 
 function weekLabel(week: string): string {
   return week.replace("-", " - ");
