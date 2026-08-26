@@ -11,6 +11,7 @@ Rules:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -402,11 +403,76 @@ def fetch_scrape(source: dict, since: datetime, until: datetime) -> list[RawItem
     return items
 
 
+def fetch_the_batch(source: dict, since: datetime, until: datetime) -> list[RawItem]:
+    """the-batch has no working RSS feed (the configured URL 404s). The tag
+    listing page has no per-item dates, so this reads the listing's own
+    CollectionPage JSON-LD for titles/URLs, then reads each linked
+    article's NewsArticle JSON-LD for its datePublished. Both are
+    structured data blocks, not CSS-selector scraping.
+    """
+    import json
+    import re
+    import time
+
+    import httpx
+
+    listing_response = httpx.get(
+        source["url"], timeout=30, follow_redirects=True, headers=_HEADERS
+    )
+    listing_response.raise_for_status()
+
+    listing_match = re.search(
+        r'<script type="application/ld\+json">(\{"@context":"https://schema\.org","@type":"CollectionPage".*?)</script>',
+        listing_response.text,
+        re.DOTALL,
+    )
+    if listing_match is None:
+        return []
+    collection = json.loads(listing_match.group(1))
+    entries = collection.get("mainEntity", {}).get("itemListElement", [])
+
+    items: list[RawItem] = []
+    for entry in entries:
+        url = entry["url"]
+        try:
+            article_response = httpx.get(
+                url, timeout=30, follow_redirects=True, headers=_HEADERS
+            )
+            article_response.raise_for_status()
+        except httpx.HTTPError:
+            continue
+        time.sleep(0.3)
+        date_match = re.search(
+            r'"datePublished"\s*:\s*"([^"]+)"', article_response.text
+        )
+        if date_match is None:
+            continue
+        try:
+            published_at = datetime.fromisoformat(date_match.group(1))
+        except ValueError:
+            continue
+        if published_at.tzinfo is None:
+            continue
+        if not (since <= published_at < until):
+            continue
+        items.append(
+            RawItem(
+                source_id=source["id"],
+                kind="article",
+                title=entry["name"],
+                url=url,
+                published_at=published_at,
+            )
+        )
+    return items
+
+
 def _fetch_api(source: dict, since: datetime, until: datetime) -> list[RawItem]:
     dispatch = {
         "hf-daily-papers": fetch_hf_daily,
         "openreview": fetch_openreview,
         "github-advisories": fetch_github_advisories,
+        "the-batch": fetch_the_batch,
     }
     handler = dispatch.get(source["id"])
     if handler is None:
@@ -444,7 +510,15 @@ def main() -> None:
         "--date",
         help="Any date within the target week, e.g. 2026-08-24 — an alternative to --week.",
     )
-    parser.add_argument("--only", help="Comma-separated source ids, for debugging.")
+    parser.add_argument(
+        "--only",
+        help=(
+            "Comma-separated source ids. Only these are (re-)fetched. Existing "
+            "data/raw/<week>.jsonl lines for every other source are preserved "
+            "untouched, so this is safe to use to refresh or backfill one "
+            "temporarily-broken source without re-fetching everything."
+        ),
+    )
     args = parser.parse_args()
 
     if args.week and args.date:
@@ -455,33 +529,67 @@ def main() -> None:
     only = set(args.only.split(",")) if args.only else None
 
     sources = _load_sources(only)
+    if only is not None:
+        unmatched = only - {s["id"] for s in sources}
+        for source_id in sorted(unmatched):
+            print(f"[{source_id}] WARNING: not found in config/sources.yaml, nothing to fetch")
+
     stats = {"sources_ok": 0, "sources_failed": 0, "items": 0}
     failures: list[tuple[str, str]] = []
     out_dir = "data/raw"
     os.makedirs(out_dir, exist_ok=True)
     out_path = f"{out_dir}/{week}.jsonl"
 
-    with open(out_path, "w", encoding="utf-8") as out:
-        for source in sources:
-            fetcher = FETCHERS.get(source["kind"])
-            if fetcher is None:
-                reason = f"no fetcher for kind={source['kind']!r}"
-                print(f"[{source['id']}] SKIPPED: {reason}")
-                stats["sources_failed"] += 1
-                failures.append((source["id"], reason))
-                continue
-            try:
-                items = fetcher(source, since, until)
-            except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
-                print(f"[{source['id']}] FAILED: {exc}")
-                stats["sources_failed"] += 1
-                failures.append((source["id"], str(exc)))
-                continue
-            for item in items:
-                out.write(item.model_dump_json() + "\n")
-            stats["items"] += len(items)
-            stats["sources_ok"] += 1
-            print(f"[{source['id']}] {len(items)} items")
+    refetched_lines: dict[str, list[str]] = {}
+    for source in sources:
+        fetcher = FETCHERS.get(source["kind"])
+        if fetcher is None:
+            reason = f"no fetcher for kind={source['kind']!r}"
+            print(f"[{source['id']}] SKIPPED: {reason}")
+            stats["sources_failed"] += 1
+            failures.append((source["id"], reason))
+            continue
+        try:
+            items = fetcher(source, since, until)
+        except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
+            print(f"[{source['id']}] FAILED: {exc}")
+            stats["sources_failed"] += 1
+            failures.append((source["id"], str(exc)))
+            continue
+        refetched_lines[source["id"]] = [item.model_dump_json() for item in items]
+        stats["items"] += len(items)
+        stats["sources_ok"] += 1
+        print(f"[{source['id']}] {len(items)} items")
+
+    if only is not None:
+        # Merge mode: keep every existing line whose source wasn't successfully
+        # re-fetched this run (untouched sources, and sources that failed again).
+        preserved_lines: list[str] = []
+        if os.path.exists(out_path):
+            with open(out_path, encoding="utf-8") as existing_file:
+                for line in existing_file:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        source_id = json.loads(line)["source_id"]
+                    except (json.JSONDecodeError, KeyError) as exc:
+                        print(f"WARNING: could not parse existing line, preserving as-is: {exc}")
+                        preserved_lines.append(line)
+                        continue
+                    if source_id not in refetched_lines:
+                        preserved_lines.append(line)
+        all_lines = preserved_lines + [
+            line for lines in refetched_lines.values() for line in lines
+        ]
+    else:
+        all_lines = [line for lines in refetched_lines.values() for line in lines]
+
+    tmp_path = f"{out_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as out:
+        for line in all_lines:
+            out.write(line + "\n")
+    os.replace(tmp_path, out_path)
 
     print(f"done: {stats}")
     if failures:

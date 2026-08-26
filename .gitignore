@@ -8,3 +8,5 @@ PLAN.md
 docs/superpowers/
 
 .claude/skills/weekly-analysis/
+
+data/raw/*.tmp

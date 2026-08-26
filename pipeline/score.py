@@ -17,11 +17,16 @@ from models import RawItem, ScoredItem, SectionId
 
 
 SOURCE_TIERS: dict[str, int] = {}
+SOURCE_FAMILIES: dict[str, str] = {}
 RELEVANCE_KEYWORDS: list[str] = []
 
 
 def _tier(source_id: str) -> int:
     return SOURCE_TIERS.get(source_id, 3)
+
+
+def _family(source_id: str) -> str:
+    return SOURCE_FAMILIES.get(source_id, source_id)
 
 
 def _load_seen() -> set[str]:
@@ -90,7 +95,12 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
     for group in groups:
         group.sort(key=lambda i: _tier(i.source_id))
         winner = group[0]
-        mirrors = [str(i.url) for i in group[1:]]
+        # dict.fromkeys dedupes while preserving order — a paper cross-listed
+        # in multiple arXiv categories is fetched once per category and lands
+        # in the same group with several identical URLs (arXiv has no
+        # per-category URL); listing that URL as a "mirror" once per
+        # duplicate is wrong, not just noisy.
+        mirrors = list(dict.fromkeys(str(i.url) for i in group[1:]))
         if mirrors:
             winner = winner.model_copy(
                 update={"meta": {**winner.meta, "mirror_urls": mirrors}}
@@ -253,7 +263,14 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
               + 0.20 * source_tier
 
     Cap at 6 items per section, 8 for security during an active incident.
-    A section with 0 items renders as "quiet week" — do not pad it.
+    Within a section, no single source family — such as all arXiv category
+    feeds sharing the family `arxiv` — may contribute more than 3 items to
+    a section — a structural diversity floor so one high-volume source
+    (e.g. an arXiv category feed with hundreds of weekly candidates) can't
+    fill an entire section on volume alone. A source with no declared
+    family (config/sources.yaml) is its own family, keyed on its
+    source_id. A section with 0 items renders as "quiet week" — do not pad
+    it.
     """
     import math
     from collections import defaultdict
@@ -272,6 +289,8 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
             + 0.20 * source_tier_component(item)
         )
 
+    MAX_PER_SOURCE = 3
+
     by_section: dict[str, list[ScoredItem]] = defaultdict(list)
     for item in items:
         by_section[item.section].append(item)
@@ -283,7 +302,18 @@ def rank(items: list[ScoredItem]) -> list[ScoredItem]:
         )
         cap = 8 if active_incident else 6
         section_items.sort(key=final_score, reverse=True)
-        ranked.extend(section_items[:cap])
+
+        survivors: list[ScoredItem] = []
+        per_source_count: dict[str, int] = defaultdict(int)
+        for item in section_items:
+            if len(survivors) >= cap:
+                break
+            if per_source_count[_family(item.source_id)] >= MAX_PER_SOURCE:
+                continue
+            survivors.append(item)
+            per_source_count[_family(item.source_id)] += 1
+
+        ranked.extend(survivors)
     return ranked
 
 
@@ -303,6 +333,23 @@ def _load_source_tiers() -> dict[str, int]:
     return tiers
 
 
+def _load_source_families() -> dict[str, str]:
+    import os
+
+    import yaml
+
+    if not os.path.exists("config/sources.yaml"):
+        return {}
+    with open("config/sources.yaml", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    families = {}
+    for group in ("papers", "journals", "labs", "news", "security", "safety"):
+        for source in config.get(group, []):
+            if "family" in source:
+                families[source["id"]] = source["family"]
+    return families
+
+
 def _load_relevance_keywords() -> list[str]:
     import os
 
@@ -316,7 +363,7 @@ def _load_relevance_keywords() -> list[str]:
 
 
 def main() -> None:
-    global SOURCE_TIERS, RELEVANCE_KEYWORDS
+    global SOURCE_TIERS, SOURCE_FAMILIES, RELEVANCE_KEYWORDS
     import os
 
     from dates import week_from_date
@@ -345,6 +392,7 @@ def main() -> None:
     args.week = week_from_date(args.date) if args.date else args.week
 
     SOURCE_TIERS = _load_source_tiers()
+    SOURCE_FAMILIES = _load_source_families()
     RELEVANCE_KEYWORDS = _load_relevance_keywords()
 
     if args.stage == "prefilter":

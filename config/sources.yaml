@@ -100,31 +100,37 @@ papers:
     kind: arxiv
     category: cs.CL
     tier: 2
+    family: arxiv
     sections: [llm, multimodal]
   - id: arxiv-cs-cv
     kind: arxiv
     category: cs.CV
     tier: 2
+    family: arxiv
     sections: [vision, multimodal]
   - id: arxiv-cs-lg
     kind: arxiv
     category: cs.LG
     tier: 2
+    family: arxiv
     sections: [llm, systems]
   - id: arxiv-cs-ai
     kind: arxiv
     category: cs.AI
     tier: 2
+    family: arxiv
     sections: [llm, safety]
   - id: arxiv-cs-cr
     kind: arxiv
     category: cs.CR
     tier: 2
+    family: arxiv
     sections: [security, safety]
   - id: arxiv-eess-iv
     kind: arxiv
     category: eess.IV
     tier: 3
+    family: arxiv
     sections: [vision]
 
   - id: hf-daily-papers
@@ -254,9 +260,10 @@ news:
     tier: 1
     sections: [llm, safety, industry]
   - id: the-batch
-    kind: rss
-    url: https://www.deeplearning.ai/the-batch/feed/
+    kind: api
+    url: https://www.deeplearning.ai/the-batch/tag/research
     tier: 2
+    note: "No working RSS feed as of 2026-08 (deeplearning.ai/the-batch/feed/ 404s). Uses the tag/research listing page's CollectionPage JSON-LD for titles/URLs, then each article's own NewsArticle JSON-LD for its date — see fetch_the_batch. Scoped to the research tag specifically (skips business/opinion pieces), which fits this digest's focus."
     sections: [llm, industry]
 
 # -----------------------------------------------------------------------------
@@ -317,12 +324,13 @@ security:
     tier: 2
     note: "GraphQL securityVulnerabilities(ecosystem: PIP|NPM), ordered by UPDATED_AT (no publishedSince filter exists on this field). Needs GITHUB_TOKEN."
     sections: [security]
-  - id: osv
-    kind: api
-    url: https://api.osv.dev/v1/query
-    tier: 2
-    note: "Clean package-vuln API. Use to enrich items, not as a discovery feed."
-    sections: [security]
+
+# osv was removed 2026-08-26 (dropped, not just disabled): its API
+# (https://api.osv.dev/v1/query) needs a specific package name to query —
+# it's not a general discovery feed. Its own note said "use to enrich
+# items, not as a discovery feed," and no fixed AI/ML package watchlist
+# was worth maintaining for this. github-advisories already covers
+# PIP/NPM supply-chain advisories more broadly.
 
 # -----------------------------------------------------------------------------
 # SAFETY & GOVERNANCE — slower cadence, closer to papers than to news
@@ -350,18 +358,11 @@ safety:
     tier: 3
     filter_keywords: [ai, artificial intelligence]
     sections: [safety, industry]
-  - id: ai-incident-database
-    kind: api
-    url: https://incidentdatabase.ai/api
-    tier: 2
-    note: >
-      Powers the 'incidents this week' callout. As of 2026-08 the GraphQL
-      endpoint returns "Forbidden - Invalid origin: API access is
-      restricted to authorized domains" for any non-browser client,
-      confirmed independent of client library (httpx and requests both
-      blocked identically). This is a deliberate origin allowlist, not a
-      fingerprint issue — no legitimate fix without either an official API
-      key (not currently offered) or the database publishing a public
-      export. Left enabled since it costs nothing when it fails; check
-      incidentdatabase.ai manually for notable incidents in the meantime.
-    sections: [safety, security]
+
+# ai-incident-database was removed 2026-08-26 (dropped, not just disabled):
+# its real endpoint is /api/graphql (the old /api url here was already
+# wrong), and even the correct one returns "Forbidden - Invalid origin" for
+# any non-browser client — confirmed independent of client library (httpx
+# and requests both blocked identically). No public data export was found
+# without reverse-engineering their Algolia-backed frontend. Check
+# incidentdatabase.ai manually for notable incidents instead.

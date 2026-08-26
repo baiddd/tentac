@@ -39,6 +39,37 @@ def test_dedupe_collapses_near_dupe_titles(monkeypatch):
     assert result[0].source_id == "lab-blog"
 
 
+def test_dedupe_mirror_urls_are_deduplicated_when_group_has_identical_urls(monkeypatch):
+    """A paper cross-listed in multiple arXiv categories (e.g. cs.CL, cs.LG,
+    cs.AI) is fetched once per category, producing several RawItems that all
+    share the exact same URL (arXiv has no per-category URL). dedupe() must
+    not list that one URL as a "mirror" once per duplicate group member.
+    """
+    tiers = {"hf-daily-papers": 1, "arxiv-cs-cl": 2, "arxiv-cs-lg": 2, "arxiv-cs-ai": 2}
+    monkeypatch.setattr("score.SOURCE_TIERS", tiers)
+
+    same_arxiv_url = "http://arxiv.org/abs/2608.19880v1"
+    items = [
+        _item("arxiv-cs-cl", same_arxiv_url, title="EnvHarness", arxiv_id="2608.19880v1"),
+        _item("arxiv-cs-lg", same_arxiv_url, title="EnvHarness", arxiv_id="2608.19880v1"),
+        _item("arxiv-cs-ai", same_arxiv_url, title="EnvHarness", arxiv_id="2608.19880v1"),
+        _item(
+            "hf-daily-papers",
+            "https://huggingface.co/papers/2608.19880",
+            title="EnvHarness",
+            arxiv_id="2608.19880",
+        ),
+    ]
+    result = dedupe(items)
+
+    assert len(result) == 1
+    assert result[0].source_id == "hf-daily-papers"
+    assert result[0].meta["mirror_urls"] == [same_arxiv_url], (
+        "the 3 identical arXiv-category URLs must collapse into one mirror entry, "
+        f"got {result[0].meta['mirror_urls']!r}"
+    )
+
+
 def test_dedupe_keeps_distinct_items():
     items = [_item("s1", "https://a.com/1", title="A"), _item("s2", "https://a.com/2", title="B")]
     result = dedupe(items)
