@@ -1,0 +1,37 @@
+---
+// The homepage cover — full-bleed hero with the week's cover image, title,
+// and headline. Pairs with the fixed/scaling "tentac" logo whose scroll
+// behavior lives in index.astro's script (both halves of the same
+// persistent-header interaction described in the Figma comments).
+import { Image } from "astro:assets";
+
+interface Props {
+  weekLabel: string;
+  headline: string;
+  coverImage?: ImageMetadata;
+  accentColor: string;
+}
+const { weekLabel, headline, coverImage, accentColor } = Astro.props;
+---
+<div class="hero" style={`--hero-accent: ${accentColor}`}>
+  {coverImage && (
+    <Image src={coverImage} alt="" class="hero-bg" widths={[402, 804, 1200]} sizes="100vw" />
+  )}
+  <div class="hero-top-gradient" aria-hidden="true"></div>
+  <div class="hero-bottom-gradient" aria-hidden="true"></div>
+
+  <div id="hero-logo-backdrop" class="hero-logo-backdrop" aria-hidden="true"></div>
+  <p id="hero-logo" class="hero-logo">tentac</p>
+
+  <p class="hero-week-label">{weekLabel}</p>
+
+  <p id="hero-subtitle" class="hero-subtitle">A weekly digest of what happened in AI</p>
+
+  <div class="hero-badge">
+    <span class="hero-badge-rule" aria-hidden="true"></span>
+    <p class="hero-badge-text">Papers, lab releases, and security incidents, picked and summarized by Claude.</p>
+    <span class="hero-badge-rule" aria-hidden="true"></span>
+  </div>
+
+  <p class="hero-headline">{headline}</p>
+</div>

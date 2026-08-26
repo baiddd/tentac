@@ -1,0 +1,25 @@
+---
+// Dark-theme item card for the homepage hero redesign. Kept separate from
+// ItemCard.astro (used by w/[week].astro) so that page's design is
+// untouched for now — see the mobile-hero-redesign branch notes.
+import type { ScoredItemData } from "../lib/issues";
+import { annotateGlossary } from "../lib/glossary";
+
+interface Props {
+  item: ScoredItemData;
+}
+const { item } = Astro.props;
+---
+<div class="hero-item">
+  <p class="hero-item-why" set:html={annotateGlossary(item.why)} />
+  <div class="hero-item-spacer" />
+  <a class="hero-item-link" href={item.url} target="_blank" rel="noopener">{item.title} &rarr;</a>
+  {item.mirrors.length > 0 && (
+    <p class="hero-item-mirrors">
+      also:
+      {item.mirrors.map((mirrorUrl, i) => (
+        <a href={mirrorUrl} target="_blank" rel="noopener">source {i + 2}</a>
+      ))}
+    </p>
+  )}
+</div>

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@200;400;500;600;700;800&display=swap");
 
 :root {
   --bg: #0b1210;
@@ -20,6 +20,10 @@ body {
   font-family: var(--font-body);
   line-height: 1.5;
 }
+
+/* Full-bleed pages (currently just the homepage hero) opt out of the
+ * default page background — their own content is edge-to-edge black. */
+body.full-bleed { background: #000; }
 
 a { color: var(--accent); }
 a:hover { text-decoration: underline; }

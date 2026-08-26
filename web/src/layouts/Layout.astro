@@ -4,8 +4,16 @@ import "../styles/global.css";
 interface Props {
   title: string;
   description?: string;
+  /** Skip the shared `.container` max-width/padding wrapper — for pages
+   * (currently just the homepage hero) that need edge-to-edge layout.
+   * Defaults to false so every other page's layout is unchanged. */
+  fullBleed?: boolean;
 }
-const { title, description = "A weekly digest of what happened in AI, picked and summarized by Claude." } = Astro.props;
+const {
+  title,
+  description = "A weekly digest of what happened in AI, picked and summarized by Claude.",
+  fullBleed = false,
+} = Astro.props;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
@@ -32,8 +40,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <title>{title}</title>
     <slot name="head" />
   </head>
-  <body>
-    <div class="container">
+  <body class:list={[{ "full-bleed": fullBleed }]}>
+    <div class:list={[{ container: !fullBleed }]}>
       <slot />
     </div>
     <script>
