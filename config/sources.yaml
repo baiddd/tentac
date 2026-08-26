@@ -318,12 +318,6 @@ security:
     tier: 2
     note: "GraphQL securityVulnerabilities(ecosystem: PIP|NPM), ordered by UPDATED_AT (no publishedSince filter exists on this field). Needs GITHUB_TOKEN."
     sections: [security]
-  - id: osv
-    kind: api
-    url: https://api.osv.dev/v1/query
-    tier: 2
-    note: "Clean package-vuln API. Use to enrich items, not as a discovery feed."
-    sections: [security]
 
 # -----------------------------------------------------------------------------
 # SAFETY & GOVERNANCE — slower cadence, closer to papers than to news
@@ -351,18 +345,11 @@ safety:
     tier: 3
     filter_keywords: [ai, artificial intelligence]
     sections: [safety, industry]
-  - id: ai-incident-database
-    kind: api
-    url: https://incidentdatabase.ai/api
-    tier: 2
-    note: >
-      Powers the 'incidents this week' callout. As of 2026-08 the GraphQL
-      endpoint returns "Forbidden - Invalid origin: API access is
-      restricted to authorized domains" for any non-browser client,
-      confirmed independent of client library (httpx and requests both
-      blocked identically). This is a deliberate origin allowlist, not a
-      fingerprint issue — no legitimate fix without either an official API
-      key (not currently offered) or the database publishing a public
-      export. Left enabled since it costs nothing when it fails; check
-      incidentdatabase.ai manually for notable incidents in the meantime.
-    sections: [safety, security]
+
+# ai-incident-database was removed 2026-08-26 (dropped, not just disabled):
+# its real endpoint is /api/graphql (the old /api url here was already
+# wrong), and even the correct one returns "Forbidden - Invalid origin" for
+# any non-browser client — confirmed independent of client library (httpx
+# and requests both blocked identically). No public data export was found
+# without reverse-engineering their Algolia-backed frontend. Check
+# incidentdatabase.ai manually for notable incidents instead.
