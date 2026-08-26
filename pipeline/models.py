@@ -93,6 +93,7 @@ class Issue(BaseModel):
     starts_on: datetime
     ends_on: datetime
     generated_at: datetime
+    title: str = ""  # short punchy title (a few words), distinct from headline
     headline: str  # single-sentence take on the week
     sections: list[Section]
     stats: dict = Field(default_factory=dict)  # items_seen, items_kept, per-source counts
