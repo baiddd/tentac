@@ -54,6 +54,34 @@ papers:
     captured = capsys.readouterr()
     assert "dead-source" in captured.out
     assert "boom" in captured.out
+    assert "1 source(s) failed this run" in captured.out
+    assert "- dead-source: boom" in captured.out
+
+
+def test_main_prints_all_succeeded_when_no_failures(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: good-source
+    kind: rss
+    url: https://example.com/feed.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+
+    def fake_fetch_rss(source, since, until):
+        return [_item(source["id"], "https://example.com/a")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(fetch.sys, "argv", ["fetch.py", "--week", "2026-W34"])
+
+    fetch.main()
+
+    captured = capsys.readouterr()
+    assert "all sources fetched successfully" in captured.out
 
 
 def test_main_accepts_date_instead_of_week(tmp_path, monkeypatch):

@@ -43,6 +43,14 @@ that's the pipeline's name, not the site's brand. Only user-facing text
    (drops dead links), ranks them, writes the headline, and assembles
    `data/2026-W34.json`. Review the diff, commit, and push to the same
    branch.
+
+   Before finishing, optionally check the sources `config/sources.yaml`
+   documents as blocked with no automated fix (currently `openreview` —
+   active bot challenge — and `ai-incident-database` — origin-restricted
+   API; see the `note:` on each). If something standout turns up, hand-add
+   it to `data/raw/<week>.jsonl` as a `RawItem`-shaped JSON line (see
+   `pipeline/models.py`) before running `/weekly-analysis`, so it flows
+   through prefilter/classification/ranking like everything else.
 3. **Merge the PR.** Merging to `main` triggers `deploy.yml` (GitHub
    Actions), which builds the Astro site and publishes it to GitHub
    Pages automatically — no manual deploy step.

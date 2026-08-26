@@ -1,4 +1,5 @@
 httpx[http2]>=0.27
+requests>=2.32
 feedparser>=6.0
 pydantic>=2.7
 PyYAML>=6.0
