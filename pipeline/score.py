@@ -95,7 +95,12 @@ def dedupe(items: list[RawItem]) -> list[RawItem]:
     for group in groups:
         group.sort(key=lambda i: _tier(i.source_id))
         winner = group[0]
-        mirrors = [str(i.url) for i in group[1:]]
+        # dict.fromkeys dedupes while preserving order — a paper cross-listed
+        # in multiple arXiv categories is fetched once per category and lands
+        # in the same group with several identical URLs (arXiv has no
+        # per-category URL); listing that URL as a "mirror" once per
+        # duplicate is wrong, not just noisy.
+        mirrors = list(dict.fromkeys(str(i.url) for i in group[1:]))
         if mirrors:
             winner = winner.model_copy(
                 update={"meta": {**winner.meta, "mirror_urls": mirrors}}
