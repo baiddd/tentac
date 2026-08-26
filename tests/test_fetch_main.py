@@ -122,3 +122,125 @@ def test_main_rejects_week_and_date_together(tmp_path, monkeypatch):
 
     with pytest.raises(SystemExit):
         fetch.main()
+
+
+def test_main_with_only_preserves_other_sources_existing_data(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: source-a
+    kind: rss
+    url: https://example.com/a.xml
+    tier: 1
+    sections: [llm]
+  - id: source-b
+    kind: rss
+    url: https://example.com/b.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    existing = [
+        _item("source-a", "https://example.com/old-a").model_dump_json(),
+        _item("source-b", "https://example.com/old-b").model_dump_json(),
+    ]
+    (raw_dir / "2026-W34.jsonl").write_text("\n".join(existing) + "\n")
+
+    def fake_fetch_rss(source, since, until):
+        assert source["id"] == "source-b", "only source-b should be re-fetched"
+        return [_item("source-b", "https://example.com/new-b")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(
+        fetch.sys, "argv", ["fetch.py", "--week", "2026-W34", "--only", "source-b"]
+    )
+
+    fetch.main()
+
+    lines = [json.loads(line) for line in (raw_dir / "2026-W34.jsonl").read_text().splitlines()]
+    by_source = {item["source_id"]: item["url"] for item in lines}
+    assert len(lines) == 2, "source-a's old line must survive, source-b's must be replaced"
+    assert by_source["source-a"] == "https://example.com/old-a", "untouched source must be preserved verbatim"
+    assert by_source["source-b"] == "https://example.com/new-b", "re-fetched source must use fresh data"
+
+
+def test_main_with_only_preserves_prior_data_on_repeat_failure(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: source-a
+    kind: rss
+    url: https://example.com/a.xml
+    tier: 1
+    sections: [llm]
+  - id: flaky-source
+    kind: rss
+    url: https://example.com/flaky.xml
+    tier: 2
+    sections: [llm]
+"""
+    )
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    existing = [
+        _item("source-a", "https://example.com/old-a").model_dump_json(),
+        _item("flaky-source", "https://example.com/old-flaky").model_dump_json(),
+    ]
+    (raw_dir / "2026-W34.jsonl").write_text("\n".join(existing) + "\n")
+
+    def fake_fetch_rss(source, since, until):
+        if source["id"] == "flaky-source":
+            raise ConnectionError("still down")
+        return [_item(source["id"], "https://example.com/a")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(
+        fetch.sys, "argv", ["fetch.py", "--week", "2026-W34", "--only", "flaky-source"]
+    )
+
+    fetch.main()
+
+    lines = [json.loads(line) for line in (raw_dir / "2026-W34.jsonl").read_text().splitlines()]
+    by_source = {item["source_id"]: item["url"] for item in lines}
+    assert len(lines) == 2, "a failed retry must not drop the source's prior data"
+    assert by_source["flaky-source"] == "https://example.com/old-flaky", "prior data survives a repeat failure"
+    assert by_source["source-a"] == "https://example.com/old-a", "sources outside --only are always untouched"
+
+
+def test_main_without_only_still_overwrites_fully(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "sources.yaml").write_text(
+        """
+papers:
+  - id: good-source
+    kind: rss
+    url: https://example.com/feed.xml
+    tier: 1
+    sections: [llm]
+"""
+    )
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    # Stale data from some earlier, differently-configured run.
+    (raw_dir / "2026-W34.jsonl").write_text(
+        _item("stale-source-no-longer-configured", "https://example.com/stale").model_dump_json() + "\n"
+    )
+
+    def fake_fetch_rss(source, since, until):
+        return [_item(source["id"], "https://example.com/a")]
+
+    monkeypatch.setattr(fetch, "FETCHERS", {**fetch.FETCHERS, "rss": fake_fetch_rss})
+    monkeypatch.setattr(fetch.sys, "argv", ["fetch.py", "--week", "2026-W34"])
+
+    fetch.main()
+
+    lines = [json.loads(line) for line in (raw_dir / "2026-W34.jsonl").read_text().splitlines()]
+    assert len(lines) == 1, "a full run (no --only) must still fully overwrite, not merge"
+    assert lines[0]["source_id"] == "good-source"

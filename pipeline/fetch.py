@@ -11,6 +11,7 @@ Rules:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -444,7 +445,15 @@ def main() -> None:
         "--date",
         help="Any date within the target week, e.g. 2026-08-24 — an alternative to --week.",
     )
-    parser.add_argument("--only", help="Comma-separated source ids, for debugging.")
+    parser.add_argument(
+        "--only",
+        help=(
+            "Comma-separated source ids. Only these are (re-)fetched. Existing "
+            "data/raw/<week>.jsonl lines for every other source are preserved "
+            "untouched, so this is safe to use to refresh or backfill one "
+            "temporarily-broken source without re-fetching everything."
+        ),
+    )
     args = parser.parse_args()
 
     if args.week and args.date:
@@ -461,27 +470,51 @@ def main() -> None:
     os.makedirs(out_dir, exist_ok=True)
     out_path = f"{out_dir}/{week}.jsonl"
 
-    with open(out_path, "w", encoding="utf-8") as out:
-        for source in sources:
-            fetcher = FETCHERS.get(source["kind"])
-            if fetcher is None:
-                reason = f"no fetcher for kind={source['kind']!r}"
-                print(f"[{source['id']}] SKIPPED: {reason}")
-                stats["sources_failed"] += 1
-                failures.append((source["id"], reason))
-                continue
-            try:
-                items = fetcher(source, since, until)
-            except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
-                print(f"[{source['id']}] FAILED: {exc}")
-                stats["sources_failed"] += 1
-                failures.append((source["id"], str(exc)))
-                continue
-            for item in items:
-                out.write(item.model_dump_json() + "\n")
-            stats["items"] += len(items)
-            stats["sources_ok"] += 1
-            print(f"[{source['id']}] {len(items)} items")
+    refetched_lines: dict[str, list[str]] = {}
+    for source in sources:
+        fetcher = FETCHERS.get(source["kind"])
+        if fetcher is None:
+            reason = f"no fetcher for kind={source['kind']!r}"
+            print(f"[{source['id']}] SKIPPED: {reason}")
+            stats["sources_failed"] += 1
+            failures.append((source["id"], reason))
+            continue
+        try:
+            items = fetcher(source, since, until)
+        except Exception as exc:  # noqa: BLE001 - one dead feed must never kill the run
+            print(f"[{source['id']}] FAILED: {exc}")
+            stats["sources_failed"] += 1
+            failures.append((source["id"], str(exc)))
+            continue
+        refetched_lines[source["id"]] = [item.model_dump_json() for item in items]
+        stats["items"] += len(items)
+        stats["sources_ok"] += 1
+        print(f"[{source['id']}] {len(items)} items")
+
+    if only is not None:
+        # Merge mode: keep every existing line whose source wasn't successfully
+        # re-fetched this run (untouched sources, and sources that failed again).
+        preserved_lines: list[str] = []
+        if os.path.exists(out_path):
+            with open(out_path, encoding="utf-8") as existing_file:
+                for line in existing_file:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    source_id = json.loads(line)["source_id"]
+                    if source_id not in refetched_lines:
+                        preserved_lines.append(line)
+        all_lines = preserved_lines + [
+            line for lines in refetched_lines.values() for line in lines
+        ]
+    else:
+        all_lines = [line for lines in refetched_lines.values() for line in lines]
+
+    tmp_path = f"{out_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as out:
+        for line in all_lines:
+            out.write(line + "\n")
+    os.replace(tmp_path, out_path)
 
     print(f"done: {stats}")
     if failures:
