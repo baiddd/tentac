@@ -393,10 +393,20 @@
   }
 
   .hero-badge {
-    /* In the same reading column as title/description on desktop, not
-     * pulled to the opposite (right) edge like on mobile. */
-    align-self: flex-start;
+    /* Right-anchored WITHIN the shared reading column (unlike mobile,
+     * where flex-end pulls it to the page's own right edge — here the
+     * column itself is already centered/aligned with the rest of the
+     * site's text, and the badge just sits at that column's right side). */
+    align-self: flex-end;
     max-width: 17rem;
+  }
+
+  .hero-section-glow-anchor {
+    /* Breaks out of the centered .hero-section-inner reading column so
+     * the glow's center still lands on the true screen edge, not the
+     * edge of the narrower column. */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
   }
 
   .hero-title {
