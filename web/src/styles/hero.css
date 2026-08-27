@@ -112,10 +112,14 @@
 /* Fixed next to the mini logo (not part of the scrolling cover content
  * anymore) — opacity is driven by the same scroll progress that shrinks
  * the logo, so it only fades in once the logo has finished shrinking. */
+/* top/left are set from JS every frame, relative to the logo's own live
+ * bounding box (see index.astro's update()) — a fixed offset would drift
+ * out of sync with the logo on desktop, where its left position is fluid
+ * (var(--content-pad) scales with viewport width). transform here just
+ * centers the label vertically on the point JS gives it. */
 .hero-week-label {
   position: fixed;
-  top: 3.75rem;
-  left: 8.5rem;
+  transform: translateY(-50%);
   z-index: 60;
   margin: 0;
   font-family: var(--font-jakarta);
@@ -126,6 +130,7 @@
   opacity: var(--week-label-opacity, 0);
   transition: opacity 0.15s linear;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .hero-subtitle {

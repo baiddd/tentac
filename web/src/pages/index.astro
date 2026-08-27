@@ -108,6 +108,14 @@ function weekLabel(week: string): string {
         const weekLabelZoneStart = zoneStart + TRANSITION_ZONE;
         const weekLabelOpacity = Math.min(1, Math.max(0, (scrollY - weekLabelZoneStart) / WEEK_LABEL_FADE_ZONE));
         weekLabel.style.setProperty("--week-label-opacity", String(weekLabelOpacity));
+
+        // Positioned relative to the logo's actual current width rather
+        // than a fixed offset — the logo's left position is fluid on
+        // desktop (var(--content-pad) scales with viewport), so a hardcoded
+        // left value on the label would drift out of sync and overlap it.
+        const logoRect = logo.getBoundingClientRect();
+        weekLabel.style.left = `${logoRect.right + 16}px`;
+        weekLabel.style.top = `${logoRect.top + logoRect.height / 2}px`;
       }
 
       function onScroll() {
