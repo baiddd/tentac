@@ -1,7 +1,9 @@
 ---
+import { Image } from "astro:assets";
 import Layout from "../../layouts/Layout.astro";
 import SectionBlock from "../../components/SectionBlock.astro";
 import { getAllIssues, getIssue } from "../../lib/issues";
+import { getCoverImage, getWeekTheme } from "../../lib/weekTheme";
 
 export function getStaticPaths() {
   return getAllIssues().map((issue) => ({ params: { week: issue.week } }));
@@ -11,6 +13,8 @@ const { week } = Astro.params;
 const issue = getIssue(week!);
 if (!issue) throw new Error(`no issue for week ${week}`);
 const issues = getAllIssues();
+const cover = getCoverImage(issue.week);
+const theme = getWeekTheme(issue.week);
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -23,10 +27,11 @@ const jsonLd = {
   articleSection: issue.sections.map((s) => s.label),
 };
 ---
-<Layout title={`tentac — ${issue.week}`}>
+<Layout title={`tentac — ${issue.week}`} theme={theme}>
   <Fragment slot="head">
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   </Fragment>
+  {cover && <Image src={cover} alt={`Cover image for ${issue.week}`} class="cover-image" widths={[480, 960, 1440]} sizes="(min-width: 640px) 44rem, 100vw" />}
   <h1>tentac</h1>
   <p class="tagline">A weekly digest of what happened in AI — papers, lab releases, and security incidents, picked and summarized by Claude.</p>
   {issues.length > 1 && (

@@ -1,13 +1,27 @@
 ---
 import "../styles/global.css";
+import type { WeekTheme } from "../lib/weekTheme";
 
 interface Props {
   title: string;
   description?: string;
+  theme?: WeekTheme;
 }
-const { title, description = "A weekly digest of what happened in AI, picked and summarized by Claude." } = Astro.props;
+const {
+  title,
+  description = "A weekly digest of what happened in AI, picked and summarized by Claude.",
+  theme,
+} = Astro.props;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const themeStyle = [
+  theme?.accent && `--accent: ${theme.accent};`,
+  theme?.text && `--text: ${theme.text};`,
+  theme?.bar && `--bar: ${theme.bar};`,
+]
+  .filter(Boolean)
+  .join(" ");
 ---
 <!doctype html>
 <html lang="en">
@@ -32,7 +46,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <title>{title}</title>
     <slot name="head" />
   </head>
-  <body>
+  <body style={themeStyle || undefined}>
     <div class="container">
       <slot />
     </div>
