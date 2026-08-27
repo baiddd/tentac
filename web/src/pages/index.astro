@@ -41,6 +41,7 @@ function weekLabel(week: string): string {
         bottomColor={heroBottomColor}
         glowColor={heroGlowColor}
       />
+      <div class="hero-cover-divider" style={`background: ${heroBottomColor}`} aria-hidden="true"></div>
       <div class="hero-sections">
         {latest.sections.map((section) => (
           <HeroSectionBlock section={section} color={palette[section.id as keyof typeof palette] || defaultAccent} />
