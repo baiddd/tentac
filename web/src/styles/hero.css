@@ -185,8 +185,8 @@
 
 .hero-cover-divider {
   height: 50px;
-  margin-top: -1px; /* overlaps .hero above */
-  margin-bottom: -1px; /* overlaps .hero-sections below */
+  margin-top: -4px; /* overlaps .hero above */
+  margin-bottom: -4px; /* overlaps .hero-sections below */
   /* Both overlaps guard against a sub-pixel rounding gap showing a hairline
      seam of the page's black background at either boundary.
      background color/gradient is set inline in index.astro — it needs the
