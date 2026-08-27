@@ -349,6 +349,71 @@
   font-family: var(--font-body);
 }
 
+/* -------------------------------------------------------------- desktop */
+
+/* Not based on the Figma cover mockup (that frame was never updated past
+ * the original photo-background version) — built from general responsive-
+ * typography practice instead: a comfortable measure (~65-75 characters
+ * per line, Bringhurst's classic range) for anything meant to be read,
+ * generous fluid side margins instead of a fixed breakpoint jump, and a
+ * full-bleed background (gradients/glow) behind that constrained reading
+ * column rather than letting body text stretch edge-to-edge on wide
+ * screens. Mobile layout below this breakpoint is untouched. */
+@media (min-width: 900px) {
+  .hero-page {
+    --content-pad: clamp(3rem, 6vw, 7rem);
+    --reading-width: 42rem; /* ~70 characters at these font sizes */
+  }
+
+  .hero-content {
+    padding-bottom: 12rem;
+  }
+
+  .hero-subtitle {
+    max-width: 24rem;
+    font-size: 1rem;
+  }
+
+  .hero-badge {
+    max-width: 17rem;
+  }
+
+  .hero-title {
+    max-width: var(--reading-width);
+    font-size: 3rem;
+  }
+
+  .hero-description {
+    max-width: var(--reading-width);
+    font-size: 1.375rem;
+  }
+
+  /* The section itself (and its gradient/glow) stays full-bleed; only the
+   * text column inside is constrained and centered, so the background
+   * still feels immersive on a wide screen while paragraphs stay readable. */
+  .hero-section-inner {
+    max-width: var(--reading-width);
+    margin: 0 auto;
+  }
+
+  .hero-section-title {
+    font-size: 2.75rem;
+  }
+
+  .hero-section-summary {
+    font-size: 1.375rem;
+  }
+
+  .hero-item-why {
+    font-size: 1.375rem;
+  }
+
+  .hero-footer {
+    max-width: var(--reading-width);
+    margin: 0 auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-logo,
   .hero-logo-backdrop,
