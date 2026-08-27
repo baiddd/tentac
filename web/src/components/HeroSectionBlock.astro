@@ -1,0 +1,29 @@
+---
+// Dark-theme section block for the homepage hero redesign. Kept separate
+// from SectionBlock.astro (used by w/[week].astro) — see mobile-hero-redesign
+// branch notes. `color` is this section's accent, either extracted from the
+// week's cover image (see lib/coverPalette.ts) or the site default.
+import type { SectionData } from "../lib/issues";
+import { annotateGlossary } from "../lib/glossary";
+import HeroItemCard from "./HeroItemCard.astro";
+
+interface Props {
+  section: SectionData;
+  color: string;
+}
+const { section, color } = Astro.props;
+---
+<section class="hero-section" style={`--section-color: ${color}`}>
+  <div class="hero-section-top-gradient" aria-hidden="true"></div>
+  <div class="hero-section-inner">
+    <h2 class="hero-section-title">{section.label}</h2>
+    <p class="hero-section-blurb">{section.blurb}</p>
+    {section.summary && <p class="hero-section-summary" set:html={annotateGlossary(section.summary)} />}
+    <div class="hero-section-glow-anchor">
+      <div class="hero-section-glow" aria-hidden="true"></div>
+    </div>
+    <div class="hero-section-items">
+      {section.items.map((item) => <HeroItemCard item={item} />)}
+    </div>
+  </div>
+</section>

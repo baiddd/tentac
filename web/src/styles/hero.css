@@ -1,0 +1,450 @@
+/* Homepage hero redesign — scoped to index.astro only (imported there, not
+ * in global.css) so w/[week].astro and archive.astro keep their current
+ * design untouched for now. Two typefaces: Plus Jakarta Sans for headings/
+ * UI chrome, Literata for reading copy (body text, item why-lines, section
+ * summaries) — the pastille/badge caption is the one deliberate exception,
+ * kept on Inter (the site's default body font) per the Figma file. */
+
+.hero-page {
+  --content-pad: 2rem;
+  --font-jakarta: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-literata: "Literata", Georgia, serif;
+  font-family: var(--font-body);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- logo */
+
+/* Font-size is the HERO (large) size natively — the mini state is reached
+ * by scaling DOWN (var(--logo-scale) goes 1 -> ~0.682), not up. Scaling a
+ * smaller native render up to look big is what caused the blur the hero
+ * logo used to have; a native-size element scaled down stays crisp. */
+.hero-logo {
+  position: fixed;
+  top: 3.25rem; /* 1.5rem + 28px, to line up with the shorter top-logo-gradiant */
+  left: var(--content-pad);
+  z-index: 60;
+  margin: 0;
+  font-family: var(--font-jakarta);
+  font-weight: 700;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: #fff;
+  transform-origin: top left;
+  transform: scale(var(--logo-scale, 1));
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+
+/* 165px block: flat 80% black opacity from the very top of the page down
+ * to the block's midpoint, then fading out to transparent by the bottom
+ * edge. Blur/mask shape is unchanged (kept as its own separate
+ * top-to-transparent fade). */
+.hero-logo-backdrop {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 10.3125rem; /* 165px */
+  z-index: 55;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  opacity: var(--backdrop-opacity, 0);
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.hero {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #000;
+}
+
+/* All hero text/UI, in its own stacking context so it always paints above
+ * the gradients/glow below — without this, the positioned gradients (even
+ * with no z-index) paint after static in-flow text per normal CSS stacking
+ * order, burying the text underneath them. */
+.hero-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  padding: 0 var(--content-pad) 10rem; /* 160px, keeps the bottom-anchored group off the edge */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Decorative glow, color-matched to the week's extracted accent — replaces
+ * the earlier photographic cover image. Plain CSS radial-gradient, same
+ * technique as .hero-section-glow below (Figma's own "light" layers turned
+ * out to be exactly this: a circle, solid color fading to transparent). */
+.hero-light-gradiant {
+  position: absolute;
+  top: 10%;
+  left: 100%; /* circle's center sits on the hero's right edge */
+  width: 130%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, var(--hero-glow-color) 0%, transparent 70%);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.hero-top-gradient {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 26%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--hero-top-color) 65%, transparent), transparent);
+}
+
+/* Fixed next to the mini logo (not part of the scrolling cover content
+ * anymore) — opacity is driven by the same scroll progress that shrinks
+ * the logo, so it only fades in once the logo has finished shrinking.
+ * top/left are set from JS every frame, relative to the logo's own live
+ * bounding box (see index.astro's update()) and bottom-aligned with it —
+ * a fixed CSS offset would drift out of sync with the logo on desktop,
+ * where its left position is fluid (var(--content-pad) scales with
+ * viewport width). */
+.hero-week-label {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  font-family: var(--font-jakarta);
+  font-size: 0.75rem;
+  font-weight: 200;
+  letter-spacing: 0.02em;
+  color: #fff;
+  opacity: var(--week-label-opacity, 0);
+  transition: opacity 0.15s linear;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hero-subtitle {
+  margin: 0 0 auto;
+  padding-top: 6rem;
+  max-width: 20rem;
+  font-family: var(--font-literata);
+  font-size: 15px;
+  font-weight: 400;
+  color: #fff;
+  opacity: var(--subtitle-opacity, 1);
+  transition: opacity 0.15s linear;
+}
+
+.hero-text-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-badge {
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 14.5rem;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.hero-badge-rule {
+  display: block;
+  width: 2.9rem;
+  height: 2px;
+  background: #fff;
+}
+
+.hero-badge-text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: #fff;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--font-jakarta);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.hero-description {
+  margin: 0.75rem 0 0;
+  font-family: var(--font-literata);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #fff;
+}
+
+.hero-cover-divider {
+  height: 50px;
+  margin-top: -4px; /* overlaps .hero above */
+  margin-bottom: -4px; /* overlaps .hero-sections below */
+  /* Both overlaps guard against a sub-pixel rounding gap showing a hairline
+     seam of the page's black background at either boundary.
+     background color/gradient is set inline in index.astro — it needs the
+     first section's color, which isn't in scope as a CSS variable here
+     (this element is a sibling of .hero, not a descendant). */
+}
+
+/* ------------------------------------------------------------- sections */
+
+.hero-sections {
+  position: relative;
+  background: #000;
+}
+
+.hero-section {
+  position: relative;
+  padding: 11.25rem var(--content-pad); /* 180px top and bottom */
+  overflow: hidden;
+}
+
+.hero-section-top-gradient {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 700px;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--section-color), transparent);
+}
+
+.hero-section-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-section-title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-jakarta);
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.hero-section-blurb {
+  margin: 0 0 50px;
+  font-family: var(--font-jakarta);
+  font-size: 15px;
+  font-weight: 400;
+  color: #fff;
+}
+
+.hero-section-summary {
+  margin: 0;
+  font-family: var(--font-literata);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: #fff;
+}
+
+.hero-section-summary .glossary-term {
+  font-weight: 700;
+  border-bottom-style: solid;
+  border-bottom-color: #fff;
+}
+
+.hero-section-glow-anchor {
+  position: relative;
+  height: 0;
+}
+
+.hero-section-glow {
+  position: absolute;
+  top: 0.5rem;
+  left: 100%; /* circle's center sits on the section's right edge */
+  width: 44rem;
+  max-width: 175vw;
+  aspect-ratio: 1;
+  transform: translate(-50%, -30%);
+  background: radial-gradient(circle, var(--section-color) 0%, transparent 70%);
+  opacity: 0.72;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero-section-items {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  margin-top: 11.25rem; /* 180px, between the section summary and the first item */
+}
+
+.hero-item-why {
+  margin: 0;
+  font-family: var(--font-literata);
+  font-size: 1.25rem;
+  color: #fff;
+}
+
+.hero-item-spacer {
+  width: 4rem;
+  height: 5px;
+  margin: 2.5rem 0; /* 40px */
+  background: var(--section-color);
+}
+
+.hero-item-link {
+  display: block;
+  margin-top: 0.75rem;
+  font-family: var(--font-jakarta);
+  font-size: 15px;
+  color: #fff;
+  opacity: 0.83;
+  text-decoration: underline;
+  text-decoration-thickness: from-font;
+}
+
+.hero-item-link:hover { opacity: 1; }
+
+.hero-item-mirrors {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-jakarta);
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hero-item-mirrors a { color: inherit; margin-right: 0.6rem; }
+
+/* --------------------------------------------------------------- footer */
+
+.hero-footer {
+  position: relative;
+  background: #000;
+  padding: 1.5rem var(--content-pad) 3rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hero-footer a { color: rgba(255, 255, 255, 0.85); }
+
+.hero-model-credit { margin: 0 0 1rem; }
+
+.hero-week-picker { margin: 0 0 1rem; }
+
+.hero-week-picker select {
+  background: #111;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+}
+
+.no-issue {
+  padding: 3rem 2rem;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+/* -------------------------------------------------------------- desktop */
+
+/* Not based on the Figma cover mockup (that frame was never updated past
+ * the original photo-background version) — built from general responsive-
+ * typography practice instead: a comfortable measure (~65-75 characters
+ * per line, Bringhurst's classic range) for anything meant to be read,
+ * generous fluid side margins instead of a fixed breakpoint jump, and a
+ * full-bleed background (gradients/glow) behind that constrained reading
+ * column rather than letting body text stretch edge-to-edge on wide
+ * screens. Mobile layout below this breakpoint is untouched. */
+@media (min-width: 900px) {
+  .hero-page {
+    --content-pad: clamp(3rem, 6vw, 7rem);
+    --reading-width: 42rem; /* ~70 characters at these font sizes */
+  }
+
+  .hero-content {
+    padding-bottom: 12rem;
+  }
+
+  .hero-subtitle {
+    max-width: 24rem;
+    font-size: 1rem;
+  }
+
+  /* Shares the exact same max-width + centering as .hero-section-inner
+   * below, so the hero's title/description/badge line up with every other
+   * block of text on the page (the logo and subtitle are deliberately
+   * excluded from this — they keep their own mobile positioning). */
+  .hero-text-column {
+    max-width: var(--reading-width);
+    margin: 0 auto;
+  }
+
+  .hero-badge {
+    /* Right-anchored WITHIN the shared reading column (unlike mobile,
+     * where flex-end pulls it to the page's own right edge — here the
+     * column itself is already centered/aligned with the rest of the
+     * site's text, and the badge just sits at that column's right side). */
+    align-self: flex-end;
+    max-width: 17rem;
+  }
+
+  .hero-section-glow-anchor {
+    /* Breaks out of the centered .hero-section-inner reading column so
+     * the glow's center still lands on the true screen edge, not the
+     * edge of the narrower column. */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  .hero-title {
+    font-size: 3rem;
+  }
+
+  .hero-description {
+    font-size: 1.375rem;
+  }
+
+  /* The section itself (and its gradient/glow) stays full-bleed; only the
+   * text column inside is constrained and centered, so the background
+   * still feels immersive on a wide screen while paragraphs stay readable. */
+  .hero-section-inner {
+    max-width: var(--reading-width);
+    margin: 0 auto;
+  }
+
+  .hero-section-title {
+    font-size: 2.75rem;
+  }
+
+  .hero-section-summary {
+    font-size: 1.375rem;
+  }
+
+  .hero-item-why {
+    font-size: 1.375rem;
+  }
+
+  .hero-footer {
+    max-width: var(--reading-width);
+    margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-logo,
+  .hero-logo-backdrop,
+  .hero-subtitle { transition: none; }
+}

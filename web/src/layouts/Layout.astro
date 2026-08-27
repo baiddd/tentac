@@ -5,11 +5,16 @@ import type { WeekTheme } from "../lib/weekTheme";
 interface Props {
   title: string;
   description?: string;
+  /** Skip the shared `.container` max-width/padding wrapper — for pages
+   * (currently just the homepage hero) that need edge-to-edge layout.
+   * Defaults to false so every other page's layout is unchanged. */
+  fullBleed?: boolean;
   theme?: WeekTheme;
 }
 const {
   title,
   description = "A weekly digest of what happened in AI, picked and summarized by Claude.",
+  fullBleed = false,
   theme,
 } = Astro.props;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
@@ -46,8 +51,8 @@ const themeStyle = [
     <title>{title}</title>
     <slot name="head" />
   </head>
-  <body style={themeStyle || undefined}>
-    <div class="container">
+  <body class:list={[{ "full-bleed": fullBleed }]} style={themeStyle || undefined}>
+    <div class:list={[{ container: !fullBleed }]}>
       <slot />
     </div>
     <script>
