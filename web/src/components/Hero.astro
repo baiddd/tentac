@@ -28,14 +28,15 @@ const displayDescription = title ? headline : "";
 <div class="hero" style={`--hero-top-color: ${topColor}; --hero-bottom-color: ${bottomColor}; --hero-glow-color: ${glowColor}`}>
   <div class="hero-light-gradiant" aria-hidden="true"></div>
   <div class="hero-top-gradient" aria-hidden="true"></div>
-  <div class="hero-bottom-gradient" aria-hidden="true"></div>
 
   <div id="hero-logo-backdrop" class="hero-logo-backdrop" aria-hidden="true"></div>
   <p id="hero-logo" class="hero-logo">tentac</p>
+  <!-- Moved here from the cover: stays fixed next to the mini logo once
+       scrolled into the article, fading in only once the logo has finished
+       shrinking to its mini size (see index.astro's scroll script). -->
+  <p id="hero-week-label" class="hero-week-label">{weekLabel}</p>
 
   <div class="hero-content">
-    <p class="hero-week-label">{weekLabel}</p>
-
     <p id="hero-subtitle" class="hero-subtitle">A weekly digest of what happened in AI</p>
 
     <div class="hero-badge">

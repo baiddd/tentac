@@ -41,7 +41,7 @@ function weekLabel(week: string): string {
         bottomColor={heroBottomColor}
         glowColor={heroGlowColor}
       />
-      <div class="hero-cover-divider" style={`background: ${heroBottomColor}`} aria-hidden="true"></div>
+      <div class="hero-cover-divider" style={`background: linear-gradient(to bottom, #000, ${heroBottomColor})`} aria-hidden="true"></div>
       <div class="hero-sections">
         {latest.sections.map((section) => (
           <HeroSectionBlock section={section} color={palette[section.id as keyof typeof palette] || defaultAccent} />
@@ -66,22 +66,27 @@ function weekLabel(week: string): string {
     <p class="no-issue">No issue published yet.</p>
   )}
   <script>
-    // Two scroll-linked effects for the hero, both driven from one
+    // Scroll-linked effects for the hero, all driven from one
     // requestAnimationFrame-throttled scroll listener — the only client JS
     // this page adds beyond the site-wide glossary popover (Layout.astro):
     //   1. #hero-subtitle fades out over the first ~50px of scroll.
     //   2. #hero-logo scales down from hero size to the fixed "mini" size,
     //      and #hero-logo-backdrop fades in, over a zone ending at the
     //      bottom of the hero — see the mobile-hero-redesign Figma comments.
+    //   3. #hero-week-label (moved next to the mini logo) fades in only
+    //      after the logo has finished shrinking — a second, shorter zone
+    //      that starts where the logo's own zone ends.
     (function () {
       const hero = document.querySelector(".hero");
       const logo = document.getElementById("hero-logo");
       const backdrop = document.getElementById("hero-logo-backdrop");
       const subtitle = document.getElementById("hero-subtitle");
-      if (!hero || !logo || !backdrop || !subtitle) return;
+      const weekLabel = document.getElementById("hero-week-label");
+      if (!hero || !logo || !backdrop || !subtitle || !weekLabel) return;
 
       const LOGO_SCALE_START = 1.466; // 40px hero size / 27.294px mini size
       const TRANSITION_ZONE = 160; // px of scroll over which the logo shrinks
+      const WEEK_LABEL_FADE_ZONE = 100; // px of scroll, right after the logo settles
       const SUBTITLE_FADE_DISTANCE = 50; // px of scroll for the subtitle fade
 
       let ticking = false;
@@ -99,6 +104,10 @@ function weekLabel(week: string): string {
         const scale = LOGO_SCALE_START - progress * (LOGO_SCALE_START - 1);
         logo.style.setProperty("--logo-scale", String(scale));
         backdrop.style.setProperty("--backdrop-opacity", String(progress));
+
+        const weekLabelZoneStart = zoneStart + TRANSITION_ZONE;
+        const weekLabelOpacity = Math.min(1, Math.max(0, (scrollY - weekLabelZoneStart) / WEEK_LABEL_FADE_ZONE));
+        weekLabel.style.setProperty("--week-label-opacity", String(weekLabelOpacity));
       }
 
       function onScroll() {

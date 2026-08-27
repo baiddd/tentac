@@ -32,26 +32,21 @@
   will-change: transform;
 }
 
-/* Matches Figma's top-logo-gradiant: opaque black through 58.8% of its
- * height, then fades to transparent. The blur is masked with the same
- * gradient shape so it fades out progressively too, instead of stopping
- * abruptly at the backdrop's edge. Height is 3/4 of the original 10.25rem
- * (a quarter removed per the latest Figma pass). */
+/* A single, continuous fade from the very top — no flat plateau — so the
+ * dark backdrop reads as a soft, discreet gradient behind the logo rather
+ * than a visible band. The blur uses the same shape so it tapers off
+ * smoothly too. Height is 3/4 of the original 10.25rem (a quarter removed
+ * per an earlier Figma pass). */
 .hero-logo-backdrop {
   position: fixed;
   inset: 0 0 auto 0;
   height: 7.6875rem;
   z-index: 55;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.79) 0%,
-    rgba(0, 0, 0, 0.79) 58.8%,
-    transparent 100%
-  );
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, transparent 100%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  mask-image: linear-gradient(to bottom, black 0%, black 58.8%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 58.8%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
   opacity: var(--backdrop-opacity, 0);
   transition: opacity 0.15s ease-out;
   pointer-events: none;
@@ -74,7 +69,7 @@
   position: relative;
   z-index: 1;
   min-height: 100svh;
-  padding: 0 var(--content-pad) 3rem;
+  padding: 0 var(--content-pad) 10rem; /* 160px, keeps the bottom-anchored group off the edge */
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -96,30 +91,24 @@
   pointer-events: none;
 }
 
-.hero-top-gradient,
-.hero-bottom-gradient {
+.hero-top-gradient {
   position: absolute;
   left: 0;
-  width: 100%;
-  pointer-events: none;
-}
-
-.hero-top-gradient {
   top: 0;
+  width: 100%;
   height: 26%;
+  pointer-events: none;
   background: linear-gradient(to bottom, color-mix(in srgb, var(--hero-top-color) 65%, transparent), transparent);
 }
 
-.hero-bottom-gradient {
-  bottom: 0;
-  height: 40%;
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--hero-bottom-color) 80%, transparent));
-}
-
+/* Fixed next to the mini logo (not part of the scrolling cover content
+ * anymore) — opacity is driven by the same scroll progress that shrinks
+ * the logo, so it only fades in once the logo has finished shrinking. */
 .hero-week-label {
-  position: absolute;
-  top: 8rem;
-  left: 1.1rem;
+  position: fixed;
+  top: 3.5rem;
+  left: 8.5rem;
+  z-index: 60;
   margin: 0;
   font-family: var(--font-jakarta);
   font-size: 0.75rem;
@@ -128,6 +117,9 @@
   color: #fff;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
+  opacity: var(--week-label-opacity, 0);
+  transition: opacity 0.15s linear;
+  pointer-events: none;
 }
 
 .hero-subtitle {
@@ -149,7 +141,7 @@
   align-items: center;
   gap: 0.5rem;
   max-width: 8.5rem;
-  margin: 0 0 2rem;
+  margin: 0 0 80px;
   text-align: center;
 }
 
@@ -179,7 +171,7 @@
 .hero-description {
   margin: 0.75rem 0 0;
   font-family: var(--font-literata);
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 400;
   line-height: 1.5;
   color: #fff;
@@ -187,6 +179,9 @@
 
 .hero-cover-divider {
   height: 50px;
+  /* background color/gradient is set inline in index.astro — it needs the
+     first section's color, which isn't in scope as a CSS variable here
+     (this element is a sibling of .hero, not a descendant). */
 }
 
 /* ------------------------------------------------------------- sections */
@@ -278,7 +273,7 @@
 .hero-item-why {
   margin: 0;
   font-family: var(--font-literata);
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   color: #fff;
 }
 
