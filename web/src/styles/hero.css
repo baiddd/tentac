@@ -15,6 +15,10 @@
 
 /* ---------------------------------------------------------------- logo */
 
+/* Font-size is the HERO (large) size natively — the mini state is reached
+ * by scaling DOWN (var(--logo-scale) goes 1 -> ~0.682), not up. Scaling a
+ * smaller native render up to look big is what caused the blur the hero
+ * logo used to have; a native-size element scaled down stays crisp. */
 .hero-logo {
   position: fixed;
   top: 3.25rem; /* 1.5rem + 28px, to line up with the shorter top-logo-gradiant */
@@ -23,11 +27,11 @@
   margin: 0;
   font-family: var(--font-jakarta);
   font-weight: 700;
-  font-size: 1.7rem;
+  font-size: 2.5rem;
   line-height: 1;
   color: #fff;
   transform-origin: top left;
-  transform: scale(var(--logo-scale, 1.466));
+  transform: scale(var(--logo-scale, 1));
   transition: transform 0.15s ease-out;
   will-change: transform;
 }
