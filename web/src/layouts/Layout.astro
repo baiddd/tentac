@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import type { WeekTheme } from "../lib/weekTheme";
 
 interface Props {
   title: string;
@@ -8,14 +9,24 @@ interface Props {
    * (currently just the homepage hero) that need edge-to-edge layout.
    * Defaults to false so every other page's layout is unchanged. */
   fullBleed?: boolean;
+  theme?: WeekTheme;
 }
 const {
   title,
   description = "A weekly digest of what happened in AI, picked and summarized by Claude.",
   fullBleed = false,
+  theme,
 } = Astro.props;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const themeStyle = [
+  theme?.accent && `--accent: ${theme.accent};`,
+  theme?.text && `--text: ${theme.text};`,
+  theme?.bar && `--bar: ${theme.bar};`,
+]
+  .filter(Boolean)
+  .join(" ");
 ---
 <!doctype html>
 <html lang="en">
@@ -40,7 +51,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <title>{title}</title>
     <slot name="head" />
   </head>
-  <body class:list={[{ "full-bleed": fullBleed }]}>
+  <body class:list={[{ "full-bleed": fullBleed }]} style={themeStyle || undefined}>
     <div class:list={[{ container: !fullBleed }]}>
       <slot />
     </div>

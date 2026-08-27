@@ -6,6 +6,10 @@
   --text: #e8efe9;
   --text-muted: #8fa89c;
   --accent: #5ee6b0;
+  /* The vertical accent bar on cards defaults to --accent but can be
+     overridden independently per week (see lib/weekTheme.ts) without
+     also changing link/hover color. */
+  --bar: var(--accent);
   --danger: #ff6b5e;
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -43,6 +47,16 @@ a:hover { text-decoration: underline; }
   .container { padding: 2.5rem 1.5rem 5rem; }
 }
 
+.cover-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 22rem;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
 h1 {
   font-family: var(--font-display);
   font-size: 2rem;
@@ -76,7 +90,7 @@ h1 {
 .ai-summary {
   font-family: var(--font-display);
   font-size: 1.15rem;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--bar);
   background: var(--surface);
   padding: 1rem 1.25rem;
   border-radius: 0 6px 6px 0;
@@ -114,7 +128,7 @@ h1 {
 }
 
 .item-card {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--bar);
   padding: 0.6rem 0 0.6rem 1rem;
   margin-bottom: 1rem;
 }
