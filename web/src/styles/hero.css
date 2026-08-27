@@ -185,6 +185,7 @@
 
 .hero-cover-divider {
   height: 50px;
+  margin-bottom: -1px; /* overlaps the next section by 1px so no sub-pixel rounding gap shows a hairline seam between them */
   /* background color/gradient is set inline in index.astro — it needs the
      first section's color, which isn't in scope as a CSS variable here
      (this element is a sibling of .hero, not a descendant). */
