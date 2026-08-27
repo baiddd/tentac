@@ -65,9 +65,10 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt   # or
 .venv/Scripts/python pipeline/build.py --week 2026-W34 --headline "..."
 ```
 
-`classify_and_score()` (in `pipeline/score.py`) and `write_headline()` (in
-`pipeline/build.py`) still exist and are fully unit-tested — they call the
-`anthropic` SDK directly and need a real `ANTHROPIC_API_KEY`. Nothing in
+`classify_and_score()` (in `pipeline/score.py`) and `write_headline()`/
+`write_title()` (in `pipeline/build.py`) still exist and are fully
+unit-tested — they call the `anthropic` SDK directly and need a real
+`ANTHROPIC_API_KEY`. Nothing in
 this repo's default workflow calls them; they're there for anyone who
 later wants to fully automate the classification step in CI instead of
 doing it locally via Claude Code.
