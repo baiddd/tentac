@@ -3,7 +3,7 @@
   "starts_on": "2026-08-17T00:00:00Z",
   "ends_on": "2026-08-24T00:00:00Z",
   "generated_at": "2026-08-26T22:57:45.620828Z",
-  "title": "AI Agents Are Starting to Fight Back",
+  "title": "An AI Red-Team Agent Hacked Its Own Company",
   "headline": "An autonomous AI red-team agent independently found and exploited a real CI/CD vulnerability in Snowflake's own infrastructure, while a study porting the Milgram obedience experiment to 42 LLMs found their willingness to escalate harmful actions under authority pressure ranges from 0% to 100%.",
   "sections": [
     {
