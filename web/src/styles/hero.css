@@ -106,7 +106,7 @@
  * the logo, so it only fades in once the logo has finished shrinking. */
 .hero-week-label {
   position: fixed;
-  top: 3.5rem;
+  top: 3.75rem;
   left: 8.5rem;
   z-index: 60;
   margin: 0;
@@ -115,8 +115,6 @@
   font-weight: 200;
   letter-spacing: 0.02em;
   color: #fff;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
   opacity: var(--week-label-opacity, 0);
   transition: opacity 0.15s linear;
   pointer-events: none;
