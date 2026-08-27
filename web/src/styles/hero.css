@@ -36,10 +36,10 @@
   will-change: transform;
 }
 
-/* 165px block: transparent at the top edge, ramping up to 80% black
- * opacity by the block's midpoint, then staying flat at 80% the rest of
- * the way down — not fading back out. Blur/mask shape is unchanged (kept
- * as its own separate top-to-transparent fade). */
+/* 165px block: flat 80% black opacity from the very top of the page down
+ * to the block's midpoint, then fading out to transparent by the bottom
+ * edge. Blur/mask shape is unchanged (kept as its own separate
+ * top-to-transparent fade). */
 .hero-logo-backdrop {
   position: fixed;
   inset: 0 0 auto 0;
@@ -47,9 +47,9 @@
   z-index: 55;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.8) 0%,
     rgba(0, 0, 0, 0.8) 50%,
-    rgba(0, 0, 0, 0.8) 100%
+    rgba(0, 0, 0, 0) 100%
   );
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
