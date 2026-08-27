@@ -39,13 +39,19 @@ const displayDescription = title ? headline : "";
   <div class="hero-content">
     <p id="hero-subtitle" class="hero-subtitle">A weekly digest of what happened in AI</p>
 
-    <div class="hero-badge">
-      <span class="hero-badge-rule" aria-hidden="true"></span>
-      <p class="hero-badge-text">Papers, lab releases, and security incidents, picked and summarized by Claude.</p>
-      <span class="hero-badge-rule" aria-hidden="true"></span>
-    </div>
+    <!-- Shares the exact same centered reading column as .hero-section-inner
+         on desktop, so the title/description/badge line up with every other
+         block of text on the page. The logo and subtitle above are
+         deliberately excluded from this. -->
+    <div class="hero-text-column">
+      <div class="hero-badge">
+        <span class="hero-badge-rule" aria-hidden="true"></span>
+        <p class="hero-badge-text">Papers, lab releases, and security incidents, picked and summarized by Claude.</p>
+        <span class="hero-badge-rule" aria-hidden="true"></span>
+      </div>
 
-    <p class="hero-title">{displayTitle}</p>
-    {displayDescription && <p class="hero-description">{displayDescription}</p>}
+      <p class="hero-title">{displayTitle}</p>
+      {displayDescription && <p class="hero-description">{displayDescription}</p>}
+    </div>
   </div>
 </div>
