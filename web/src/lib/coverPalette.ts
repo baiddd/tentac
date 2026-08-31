@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 // Automatically derives one accent color per section from a week's cover
@@ -25,7 +24,16 @@ const SECTION_ORDER = [
 
 export type SectionPalette = Partial<Record<(typeof SECTION_ORDER)[number], string>>;
 
-const COVERS_DIR = fileURLToPath(new URL("../assets/covers/", import.meta.url));
+// Resolved from the project root (Astro always runs `astro build`/`astro
+// dev` with cwd set to the project — see package.json's scripts and
+// deploy.yml's `working-directory: web`), not from import.meta.url: Vite
+// bundles this module into a build-time chunk under dist/.prerender/ during
+// `astro build`, which would silently move an import.meta.url-relative path
+// away from the real src/assets/covers/ and make every week's cover
+// undiscoverable in production (it still worked in `astro dev`, where this
+// module runs unbundled from its source location — that's how this went
+// unnoticed).
+const COVERS_DIR = path.join(process.cwd(), "src/assets/covers/");
 const COVER_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
 const BUCKET_SIZE_DEG = 15;
