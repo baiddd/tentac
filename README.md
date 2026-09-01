@@ -50,6 +50,17 @@ that's the pipeline's name, not the site's brand. Only user-facing text
    it to `data/raw/<week>.jsonl` as a `RawItem`-shaped JSON line (see
    `pipeline/models.py`) before running `/weekly-analysis`, so it flows
    through prefilter/classification/ranking like everything else.
+
+   Before settling on a headline/title, check `data/index.json`'s last
+   1-2 entries. The highest-scored item most weeks is going to be some
+   flavor of "an AI agent autonomously breached/exploited something" —
+   that's a real, structural bias in the scoring rubric (dramatic,
+   consequential incidents score highest), not a coincidence, and it
+   will read as a repeat if it's also what led last week. If the
+   top-scored story is the same shape as the most recent published
+   headline, prefer a different angle from the top 3-5 items instead of
+   defaulting to #1 — the goal is a digest that reads as covering a
+   different week, not the same headline restated.
 3. **Merge the PR.** Merging to `main` triggers `deploy.yml` (GitHub
    Actions), which builds the Astro site and publishes it to GitHub
    Pages automatically — no manual deploy step.
