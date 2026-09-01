@@ -76,37 +76,25 @@
 .hero-content {
   position: relative;
   z-index: 1;
-  min-height: 100svh;
-  padding: 0 var(--content-pad) 10rem; /* 160px, keeps the bottom-anchored group off the edge */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  height: 100svh;
+  height: 100dvh; /* progressive enhancement — accounts for mobile browser chrome */
+  /* No padding here: an absolutely positioned child's `left/right: 0`
+   * lands on the parent's padding-box OUTER edge (i.e. ignores the
+   * parent's own padding entirely) — .hero-center-row and
+   * .hero-bottom-row set --content-pad directly on themselves instead. */
 }
 
-/* Decorative glow, color-matched to the week's extracted accent — replaces
- * the earlier photographic cover image. Plain CSS radial-gradient, same
- * technique as .hero-section-glow below (Figma's own "light" layers turned
- * out to be exactly this: a circle, solid color fading to transparent). */
-.hero-light-gradiant {
+/* The animated WebGL cover (src/lib/gradient/, mounted by the <script>
+ * at the bottom of Hero.astro) — replaces the earlier static CSS
+ * radial-gradient glow. Sits behind .hero-content (z-index 0 vs 1) but
+ * above the plain black .hero background. */
+.hero-gradient-canvas {
   position: absolute;
-  top: 10%;
-  left: 100%; /* circle's center sits on the hero's right edge */
-  width: 130%;
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, var(--hero-glow-color) 0%, transparent 70%);
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-.hero-top-gradient {
-  position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   width: 100%;
-  height: 26%;
+  height: 100%;
+  z-index: 0;
   pointer-events: none;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--hero-top-color) 65%, transparent), transparent);
 }
 
 /* Fixed next to the mini logo (not part of the scrolling cover content
@@ -117,24 +105,63 @@
  * a fixed CSS offset would drift out of sync with the logo on desktop,
  * where its left position is fluid (var(--content-pad) scales with
  * viewport width). */
-.hero-week-label {
+/* Shows which section is currently being read, right-aligned opposite
+ * the mini logo — Figma's "mobile-header" frame (node 64:321). `top` is
+ * still set from JS each frame (index.astro) to stay baseline-aligned
+ * with the logo's own text as it shrinks; `right` is fixed in CSS since,
+ * unlike the old week-label, this one doesn't need to track the logo's
+ * (fluid, content-pad-based) horizontal position. */
+.hero-section-label {
   position: fixed;
+  right: var(--content-pad);
   z-index: 60;
   margin: 0;
+  height: 1.35rem; /* the layers below are position:absolute and would
+                       otherwise collapse this box to zero height */
   font-family: var(--font-jakarta);
-  font-size: 0.75rem;
-  font-weight: 200;
-  letter-spacing: 0.02em;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
   color: #fff;
-  opacity: var(--week-label-opacity, 0);
+  opacity: var(--section-label-opacity, 0);
   transition: opacity 0.15s linear;
   pointer-events: none;
   white-space: nowrap;
 }
 
+/* True cross-fade: both layers sit stacked (absolute, same box), and
+ * index.astro toggles .is-visible on whichever one holds the new title
+ * while removing it from the one holding the old title — they fade
+ * simultaneously instead of a sequential "vanish then reappear". This
+ * transition is independent of the outer opacity above (which tracks
+ * scroll every frame with no transition, staying snappy) — a layer only
+ * moves when the active section itself changes. */
+.hero-section-label-layer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  /* !important beats global.css's blanket
+   * `* { transition: none !important; }` under prefers-reduced-motion —
+   * see the same note on .hero-scroll-chevron's animation. */
+  transition: opacity 0.4s ease !important;
+}
+
+.hero-section-label-layer.is-visible {
+  opacity: 1;
+}
+
+/* Paired with .hero-logo as one fixed "header" group (Figma's mobile-cover1
+ * frame stacks them the same way) — fixed rather than flowed inside
+ * .hero-content, so the content column below can center on the hero's
+ * full height instead of whatever's left after reserving this group's
+ * space. */
 .hero-subtitle {
-  margin: 0 0 auto;
-  padding-top: 6rem;
+  position: fixed;
+  top: 1.85rem; /* sits right above .hero-logo's 3.25rem top */
+  left: var(--content-pad);
+  z-index: 60;
+  margin: 0;
   max-width: 20rem;
   font-family: var(--font-literata);
   font-size: 15px;
@@ -144,34 +171,31 @@
   transition: opacity 0.15s linear;
 }
 
+/* Centered on the hero's FULL height (this row is the flex:1 sibling of
+ * .hero-bottom-row within .hero-content, so it fills whatever's left after
+ * the bottom row's own height) — matches Figma, where the "center" group's
+ * vertical midpoint lands exactly on the frame's own midpoint, ignoring
+ * the fixed/floating header above it. */
+.hero-center-row {
+  /* Absolutely positioned (like .hero-bottom-row below) rather than a
+   * flex sibling of it — a shared flex column would have .hero-bottom-row
+   * eat into the space this centers within, pulling the midpoint up off
+   * the viewport's true center by half of the bottom row's height. Both
+   * float independently within .hero-content instead, matching how
+   * Figma's "center" and the badge/scroll group are just two free-floating
+   * frames, not a shared layout fighting over space. */
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--content-pad);
+  right: var(--content-pad);
+  display: flex;
+  align-items: center;
+}
+
 .hero-text-column {
   display: flex;
   flex-direction: column;
-}
-
-.hero-badge {
-  align-self: flex-end;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 14.5rem;
-  margin-bottom: 25px;
-  text-align: center;
-}
-
-.hero-badge-rule {
-  display: block;
-  width: 2.9rem;
-  height: 2px;
-  background: #fff;
-}
-
-.hero-badge-text {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 15px;
-  color: #fff;
 }
 
 .hero-title {
@@ -187,20 +211,77 @@
   margin: 0.75rem 0 0;
   font-family: var(--font-literata);
   font-size: 1.25rem;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.5;
   color: #fff;
 }
 
-.hero-cover-divider {
-  height: 50px;
-  margin-top: -4px; /* overlaps .hero above */
-  margin-bottom: -4px; /* overlaps .hero-sections below */
-  /* Both overlaps guard against a sub-pixel rounding gap showing a hairline
-     seam of the page's black background at either boundary.
-     background color/gradient is set inline in index.astro — it needs the
-     first section's color, which isn't in scope as a CSS variable here
-     (this element is a sibling of .hero, not a descendant). */
+.hero-week-inline {
+  margin: 1.5rem 0 0;
+  font-family: var(--font-jakarta);
+  font-size: 0.72rem;
+  font-weight: 200;
+  color: #fff;
+}
+
+/* Claude-credit badge (left) + scroll indicator (right), anchored to the
+ * bottom of the hero — the badge lost its rule-line decoration from the
+ * earlier design; Figma's version is plain text. */
+.hero-bottom-row {
+  position: absolute;
+  left: var(--content-pad);
+  right: var(--content-pad);
+  bottom: 2.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.hero-badge-text {
+  margin: 0;
+  max-width: 11rem;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  color: #fff;
+}
+
+/* Simple "scroll down" cue: a chevron that bounces down and brightens,
+ * looping — replaced an earlier track+thumb version that was too subtle
+ * to read as an invitation to scroll. Animates unconditionally (no
+ * prefers-reduced-motion carve-out), per explicit request. */
+.hero-scroll-indicator {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: #fff;
+}
+
+.hero-scroll-chevron {
+  width: 1.5rem;
+  height: 1.5rem;
+  /* !important is required to beat global.css's blanket
+   * `* { animation: none !important; }` under prefers-reduced-motion —
+   * a plain declaration here would lose to that rule regardless of this
+   * selector's own specificity, since !important always wins over a
+   * non-important rule. This is the one exception, by explicit request;
+   * nothing else in the hero overrides that global rule. */
+  animation: hero-scroll-chevron-move 1.6s ease-in-out infinite !important;
+}
+
+@keyframes hero-scroll-chevron-move {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
 }
 
 /* ------------------------------------------------------------- sections */
@@ -260,25 +341,6 @@
   font-weight: 700;
   border-bottom-style: solid;
   border-bottom-color: #fff;
-}
-
-.hero-section-glow-anchor {
-  position: relative;
-  height: 0;
-}
-
-.hero-section-glow {
-  position: absolute;
-  top: 0.5rem;
-  left: 100%; /* circle's center sits on the section's right edge */
-  width: 44rem;
-  max-width: 175vw;
-  aspect-ratio: 1;
-  transform: translate(-50%, -30%);
-  background: radial-gradient(circle, var(--section-color) 0%, transparent 70%);
-  opacity: 0.72;
-  z-index: -1;
-  pointer-events: none;
 }
 
 .hero-section-items {
@@ -374,8 +436,8 @@
     --reading-width: 42rem; /* ~70 characters at these font sizes */
   }
 
-  .hero-content {
-    padding-bottom: 12rem;
+  .hero-bottom-row {
+    bottom: 3.5rem;
   }
 
   .hero-subtitle {
@@ -384,7 +446,7 @@
   }
 
   /* Shares the exact same max-width + centering as .hero-section-inner
-   * below, so the hero's title/description/badge line up with every other
+   * below, so the hero's title/description line up with every other
    * block of text on the page (the logo and subtitle are deliberately
    * excluded from this — they keep their own mobile positioning). */
   .hero-text-column {
@@ -392,21 +454,8 @@
     margin: 0 auto;
   }
 
-  .hero-badge {
-    /* Right-anchored WITHIN the shared reading column (unlike mobile,
-     * where flex-end pulls it to the page's own right edge — here the
-     * column itself is already centered/aligned with the rest of the
-     * site's text, and the badge just sits at that column's right side). */
-    align-self: flex-end;
+  .hero-badge-text {
     max-width: 17rem;
-  }
-
-  .hero-section-glow-anchor {
-    /* Breaks out of the centered .hero-section-inner reading column so
-     * the glow's center still lands on the true screen edge, not the
-     * edge of the narrower column. */
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
   }
 
   .hero-title {
@@ -447,4 +496,8 @@
   .hero-logo,
   .hero-logo-backdrop,
   .hero-subtitle { transition: none; }
+
+  /* Deliberately NOT included here: .hero-scroll-chevron keeps animating
+   * even under reduced-motion, per explicit request — everything else
+   * in the hero still respects the OS-level preference. */
 }

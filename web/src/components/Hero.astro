@@ -1,9 +1,17 @@
 ---
-// The homepage cover — full-bleed black hero with a decorative radial glow
-// (color-matched to the week's extracted palette), title, and headline.
-// Pairs with the fixed/scaling "tentac" logo whose scroll behavior lives
-// in index.astro's script (both halves of the same persistent-header
-// interaction described in the Figma comments).
+// The homepage cover — full-bleed hero with an animated WebGL gradient
+// background (src/lib/gradient/) whose style+params are this specific
+// issue's own frozen cover (see gradient/issueCover.ts, resolved by the
+// caller and passed in as coverStyleId/coverParams) — different issues
+// can render entirely different gradient styles. Layout follows the
+// Figma "mobile-cover1" frame (node 2:2 in the tentac file): a fixed
+// header group (logo + subtitle) pinned top, the
+// title/description/week-label centered on the full viewport height, and
+// the Claude-credit badge + scroll indicator anchored to the bottom. The
+// header's shrink-on-scroll behavior (both logo and subtitle, now fixed
+// together as one group) is unchanged and still lives in index.astro's
+// script — this is the other half of that persistent-header interaction.
+import type { GradientParams } from "../lib/gradient/styles";
 
 interface Props {
   weekLabel: string;
@@ -13,45 +21,97 @@ interface Props {
   /** Full descriptive sentence (Issue.headline) — shown as the smaller
    * paragraph under the title. */
   headline: string;
-  /** Three distinct colors pulled from the extracted palette (top glow,
-   * bottom fade, decorative light-gradiant blob) — matches Figma's cover,
-   * which uses three different hand-picked colors rather than one repeated
-   * accent. */
-  topColor: string;
-  bottomColor: string;
-  glowColor: string;
+  /** This issue's resolved cover — see gradient/issueCover.ts. */
+  coverStyleId: string;
+  coverParams: GradientParams;
 }
-const { weekLabel, title, headline, topColor, bottomColor, glowColor } = Astro.props;
+const { weekLabel, title, headline, coverStyleId, coverParams } = Astro.props;
 const displayTitle = title || headline;
 const displayDescription = title ? headline : "";
 ---
-<div class="hero" style={`--hero-top-color: ${topColor}; --hero-bottom-color: ${bottomColor}; --hero-glow-color: ${glowColor}`}>
-  <div class="hero-light-gradiant" aria-hidden="true"></div>
-  <div class="hero-top-gradient" aria-hidden="true"></div>
+<div class="hero">
+  <canvas
+    id="hero-gradient-canvas"
+    class="hero-gradient-canvas"
+    aria-hidden="true"
+    data-cover-style={coverStyleId}
+    data-cover-params={JSON.stringify(coverParams)}
+  ></canvas>
 
   <div id="hero-logo-backdrop" class="hero-logo-backdrop" aria-hidden="true"></div>
+  <!-- header group: subtitle + logo, both fixed and shrinking/fading
+       together on scroll (index.astro's script) — matches Figma's
+       "header" frame, which stacks them the same way. -->
+  <p id="hero-subtitle" class="hero-subtitle">A weekly digest of what happened in AI</p>
   <p id="hero-logo" class="hero-logo">tentac</p>
-  <!-- Moved here from the cover: stays fixed next to the mini logo once
-       scrolled into the article, fading in only once the logo has finished
-       shrinking to its mini size (see index.astro's scroll script). -->
-  <p id="hero-week-label" class="hero-week-label">{weekLabel}</p>
+  <!-- Right-aligned opposite the mini logo, matching Figma's
+       "mobile-header" frame (node 64:321) — shows the section currently
+       being read. Two stacked layers so index.astro's scroll check can
+       genuinely cross-fade between section titles (old fading out while
+       the new one fades in, simultaneously) instead of a sequential
+       "vanish then reappear". Fades in as a whole on the same schedule
+       the mini logo settles on. -->
+  <p id="hero-section-label" class="hero-section-label" aria-hidden="true">
+    <span class="hero-section-label-layer" data-layer="0"></span>
+    <span class="hero-section-label-layer" data-layer="1"></span>
+  </p>
 
   <div class="hero-content">
-    <p id="hero-subtitle" class="hero-subtitle">A weekly digest of what happened in AI</p>
-
-    <!-- Shares the exact same centered reading column as .hero-section-inner
-         on desktop, so the title/description/badge line up with every other
-         block of text on the page. The logo and subtitle above are
-         deliberately excluded from this. -->
-    <div class="hero-text-column">
-      <div class="hero-badge">
-        <span class="hero-badge-rule" aria-hidden="true"></span>
-        <p class="hero-badge-text">Papers, lab releases, and security incidents, picked and summarized by Claude.</p>
-        <span class="hero-badge-rule" aria-hidden="true"></span>
+    <!-- Centered on the FULL hero height (not the space left after the
+         fixed header, which floats above it) — matches Figma, where this
+         group's own vertical midpoint lands exactly on the frame's. -->
+    <div class="hero-center-row">
+      <div class="hero-text-column">
+        <p class="hero-title">{displayTitle}</p>
+        {displayDescription && <p class="hero-description">{displayDescription}</p>}
+        <p class="hero-week-inline">{weekLabel}</p>
       </div>
+    </div>
 
-      <p class="hero-title">{displayTitle}</p>
-      {displayDescription && <p class="hero-description">{displayDescription}</p>}
+    <div id="hero-bottom-row" class="hero-bottom-row">
+      <p class="hero-badge-text">
+        Papers, lab releases, and security incidents, <strong>picked and summarized</strong> by Claude.
+      </p>
+      <div class="hero-scroll-indicator" aria-hidden="true">
+        <svg class="hero-scroll-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 8 12 16 20 8"></polyline>
+        </svg>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+  import { GradientEngine } from "../lib/gradient/engine";
+  import type { GradientParams } from "../lib/gradient/styles";
+
+  const canvas = document.getElementById("hero-gradient-canvas") as HTMLCanvasElement | null;
+  if (canvas) {
+    try {
+      const styleId = canvas.dataset.coverStyle;
+      const params = JSON.parse(canvas.dataset.coverParams || "null") as GradientParams | null;
+      if (!styleId || !params) throw new Error("missing cover style/params on canvas dataset");
+      const engine = new GradientEngine(canvas);
+      engine.setExact(styleId, params); // this issue's own frozen cover — see gradient/issueCover.ts
+      engine.start();
+      window.addEventListener("resize", () => engine.resize());
+
+      // Pause rendering once the hero scrolls out of view (and resume
+      // coming back) — no reason to keep a WebGL animation loop running
+      // for a canvas nobody can see.
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) engine.start();
+            else engine.stop();
+          }
+        },
+        { threshold: 0 }
+      );
+      observer.observe(canvas);
+    } catch (err) {
+      console.error("Hero gradient cover failed to initialize:", err);
+      canvas.hidden = true;
+    }
+  }
+</script>

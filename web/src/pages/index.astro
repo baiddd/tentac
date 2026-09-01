@@ -3,28 +3,22 @@ import Layout from "../layouts/Layout.astro";
 import Hero from "../components/Hero.astro";
 import HeroSectionBlock from "../components/HeroSectionBlock.astro";
 import { getAllIssues } from "../lib/issues";
-import { getSectionPalette } from "../lib/coverPalette";
+import { getGradientCoverPalette } from "../lib/gradientCoverPalette";
+import { getIssueCover } from "../lib/gradient/issueCover";
 import "../styles/hero.css";
 
 const issues = getAllIssues();
 const latest = issues[0];
 
-// The cover image is read directly off disk for color extraction only (see
-// coverPalette.ts) — it's never displayed itself, the hero shows a plain
-// black background with a color-matched decorative glow instead.
-const palette = latest ? await getSectionPalette(latest.week) : {};
+// Each issue has its own cover: a style+params resolved once (from a
+// saved presets/issues/<week>.json if one exists, else generated
+// deterministically from the week and then written to that file) and
+// frozen forever after — see gradient/issueCover.ts. Section accents are
+// derived from that same resolved palette so they stay visually
+// consistent with whatever's actually painted behind the cover text.
+const cover = latest ? getIssueCover(latest.week) : null;
+const palette = cover ? getGradientCoverPalette(cover.params) : {};
 const defaultAccent = "#5ee6b0"; // matches --accent in global.css
-const paletteColors = latest
-  ? latest.sections.map((s) => palette[s.id as keyof typeof palette]).filter((c): c is string => Boolean(c))
-  : [];
-// Figma's cover uses three distinct colors (top glow, bottom fade, and the
-// decorative light-gradiant blob) rather than one repeated accent. The
-// bottom fade must match the first article's own color exactly, for a
-// seamless transition into it; top and the glow use other palette entries
-// for variety, falling back gracefully as the palette shrinks.
-const heroBottomColor = paletteColors[0] || defaultAccent;
-const heroTopColor = paletteColors[paletteColors.length - 1] || heroBottomColor;
-const heroGlowColor = paletteColors[Math.floor(paletteColors.length / 2)] || heroBottomColor;
 
 function weekLabel(week: string): string {
   return week.replace("-", " - ");
@@ -37,11 +31,9 @@ function weekLabel(week: string): string {
         weekLabel={weekLabel(latest.week)}
         title={latest.title}
         headline={latest.headline}
-        topColor={heroTopColor}
-        bottomColor={heroBottomColor}
-        glowColor={heroGlowColor}
+        coverStyleId={cover!.styleId}
+        coverParams={cover!.params}
       />
-      <div class="hero-cover-divider" style={`background: linear-gradient(to bottom, #000, ${heroBottomColor})`} aria-hidden="true"></div>
       <div class="hero-sections">
         {latest.sections.map((section) => (
           <HeroSectionBlock section={section} color={palette[section.id as keyof typeof palette] || defaultAccent} />
@@ -73,21 +65,54 @@ function weekLabel(week: string): string {
     //   2. #hero-logo scales down from hero size to the fixed "mini" size,
     //      and #hero-logo-backdrop fades in, over a zone ending at the
     //      bottom of the hero — see the mobile-hero-redesign Figma comments.
-    //   3. #hero-week-label (moved next to the mini logo) fades in only
-    //      after the logo has finished shrinking — a second, shorter zone
-    //      that starts where the logo's own zone ends.
+    //   3. #hero-section-label (right-aligned opposite the mini logo,
+    //      Figma's "mobile-header" node 64:321) fades in only after the
+    //      logo has finished shrinking, then its text tracks whichever
+    //      .hero-section is currently scrolled up near the header,
+    //      cross-fading between section titles as the active one changes.
+    //   4. #hero-bottom-row (badge + scroll indicator, bottom of the first
+    //      screen) fades out as it nears the fixed header while scrolling
+    //      up — the mobile-cover1 redesign put it much closer to the
+    //      viewport top than before, so without this it visibly collides
+    //      with the header/backdrop before the backdrop (zone 2, tied to
+    //      the logo's own shrink) has ramped up enough to hide it.
     (function () {
       const hero = document.querySelector(".hero");
       const logo = document.getElementById("hero-logo");
       const backdrop = document.getElementById("hero-logo-backdrop");
       const subtitle = document.getElementById("hero-subtitle");
-      const weekLabel = document.getElementById("hero-week-label");
-      if (!hero || !logo || !backdrop || !subtitle || !weekLabel) return;
+      const sectionLabel = document.getElementById("hero-section-label");
+      const sectionLabelLayers = Array.from(document.querySelectorAll(".hero-section-label-layer"));
+      const bottomRow = document.getElementById("hero-bottom-row");
+      const sections = Array.from(document.querySelectorAll(".hero-section"));
+      if (!hero || !logo || !backdrop || !subtitle || !sectionLabel || sectionLabelLayers.length !== 2 || !bottomRow) return;
 
       const LOGO_SCALE_MINI = 0.6824; // 27.294px mini size / 40px hero size — scaling DOWN stays crisp
       const TRANSITION_ZONE = 160; // px of scroll over which the logo shrinks
-      const WEEK_LABEL_FADE_ZONE = 100; // px of scroll, right after the logo settles
+      const SECTION_LABEL_FADE_ZONE = 100; // px of scroll, right after the logo settles
       const SUBTITLE_FADE_DISTANCE = 50; // px of scroll for the subtitle fade
+      const BOTTOM_ROW_FADE_START = 280; // px from viewport top: still fully visible above this
+      const BOTTOM_ROW_FADE_END = 150; // px from viewport top: fully faded by this (clears the header/backdrop zone)
+      const ACTIVE_SECTION_LINE = 100; // px from viewport top: a section becomes "active" once its title crosses this
+
+      let currentSectionTitle = "";
+      let activeLayerIndex = 0;
+
+      // True cross-fade between the two stacked layers: write the new
+      // title into the currently-hidden layer, then swap which one is
+      // .is-visible — both transition simultaneously (old fading out,
+      // new fading in), rather than a sequential "vanish then reappear".
+      function setActiveSectionTitle(title) {
+        if (title === currentSectionTitle) return;
+        currentSectionTitle = title;
+        const nextIndex = 1 - activeLayerIndex;
+        const nextLayer = sectionLabelLayers[nextIndex];
+        const prevLayer = sectionLabelLayers[activeLayerIndex];
+        nextLayer.textContent = title;
+        nextLayer.classList.add("is-visible");
+        prevLayer.classList.remove("is-visible");
+        activeLayerIndex = nextIndex;
+      }
 
       let ticking = false;
 
@@ -105,18 +130,34 @@ function weekLabel(week: string): string {
         logo.style.setProperty("--logo-scale", String(scale));
         backdrop.style.setProperty("--backdrop-opacity", String(progress));
 
-        const weekLabelZoneStart = zoneStart + TRANSITION_ZONE;
-        const weekLabelOpacity = Math.min(1, Math.max(0, (scrollY - weekLabelZoneStart) / WEEK_LABEL_FADE_ZONE));
-        weekLabel.style.setProperty("--week-label-opacity", String(weekLabelOpacity));
+        const sectionLabelZoneStart = zoneStart + TRANSITION_ZONE;
+        const sectionLabelOpacity = Math.min(1, Math.max(0, (scrollY - sectionLabelZoneStart) / SECTION_LABEL_FADE_ZONE));
+        sectionLabel.style.setProperty("--section-label-opacity", String(sectionLabelOpacity));
 
-        // Positioned relative to the logo's actual current box rather than
-        // a fixed offset — the logo's left position is fluid on desktop
-        // (var(--content-pad) scales with viewport), so a hardcoded left
-        // value on the label would drift out of sync and overlap it.
-        // Bottom-aligned with the logo's own text, not vertically centered.
+        // Bottom-aligned with the logo's own text (not vertically
+        // centered) — tracks the logo's live box so it stays aligned
+        // through the shrink transition; horizontal position is fixed in
+        // CSS (right: var(--content-pad)), no JS needed for that axis.
         const logoRect = logo.getBoundingClientRect();
-        weekLabel.style.left = `${logoRect.right + 16}px`;
-        weekLabel.style.top = `${logoRect.bottom - weekLabel.offsetHeight}px`;
+        sectionLabel.style.top = `${logoRect.bottom - sectionLabel.offsetHeight}px`;
+
+        // The active section is the last one (in document order) whose
+        // title has scrolled up to/past ACTIVE_SECTION_LINE — i.e. the
+        // section currently being read just below the fixed header.
+        let activeSection = null;
+        for (const section of sections) {
+          if (section.getBoundingClientRect().top <= ACTIVE_SECTION_LINE) {
+            activeSection = section;
+          }
+        }
+        setActiveSectionTitle(activeSection ? activeSection.dataset.sectionTitle || "" : "");
+
+        const bottomRowBottom = bottomRow.getBoundingClientRect().bottom;
+        const bottomRowOpacity = Math.min(
+          1,
+          Math.max(0, (bottomRowBottom - BOTTOM_ROW_FADE_END) / (BOTTOM_ROW_FADE_START - BOTTOM_ROW_FADE_END))
+        );
+        bottomRow.style.opacity = String(bottomRowOpacity);
       }
 
       function onScroll() {

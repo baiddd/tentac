@@ -1,0 +1,395 @@
+---
+// Standalone test page for the WebGL gradient-background engine — not
+// linked from the site nav. Full-viewport canvas + a control panel
+// (style dropdown, randomize, per-parameter sliders, save) fixed
+// bottom-right, for iterating on the 13 gradient styles in
+// src/lib/gradient/ before any of it gets wired into the real homepage
+// hero. Save persists the current style's tweaked params to this
+// browser (localStorage, so switching styles and back keeps them) and
+// downloads them as JSON so they can be handed back to fold into
+// styles.ts as the new baked-in defaults.
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Gradient lab — tentac</title>
+    <style>
+      body { background: #000; overflow: hidden; }
+
+      #gradient-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+
+      .lab-panel {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 10;
+        width: 17rem;
+        max-height: calc(100vh - 2.5rem);
+        overflow-y: auto;
+        padding: 0.75rem;
+        background: rgba(10, 10, 12, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        font-family: var(--font-body);
+      }
+
+      .lab-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .lab-panel select,
+      .lab-panel button {
+        font-family: var(--font-body);
+        font-size: 0.8rem;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.45rem 0.6rem;
+        background: #000;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .lab-panel select { flex: 1; min-width: 0; }
+
+      /* :global is required here: the <option>s are created with
+         document.createElement in the client script below, so they never
+         receive Astro's scoped-style attribute — a scoped rule would
+         silently never match them, which is why the dropdown list used
+         to render white-on-white. */
+      :global(.lab-panel select option) {
+        background: #000;
+        color: #fff;
+      }
+
+      .lab-panel select:hover,
+      .lab-panel button:hover { background: #1a1a1a; }
+
+      #randomize-btn, #save-btn {
+        background: var(--accent);
+        color: #06110c;
+        border-color: transparent;
+        font-weight: 600;
+        flex: 1;
+      }
+
+      #randomize-btn:hover, #save-btn:hover { filter: brightness(1.08); background: var(--accent); }
+
+      #reset-btn {
+        flex: 1;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.75rem;
+      }
+
+      .lab-sliders {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        padding-top: 0.4rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .lab-slider-row label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 0.2rem;
+      }
+
+      .lab-slider-row output { color: #fff; font-variant-numeric: tabular-nums; }
+
+      .lab-slider-row .lab-slider-track {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .lab-slider-row input[type="range"] {
+        flex: 1;
+        min-width: 0;
+        accent-color: var(--accent);
+      }
+
+      /* Emoji glyphs (🔒/🔓) render in the system's own fixed colors on
+         every platform — CSS `color` has no effect on them, so the two
+         states looked nearly identical. Uses an inline SVG (stroke:
+         currentColor) instead, so color is fully ours: green + closed
+         shackle when locked, red + open shackle when unlocked — shape
+         AND color both change, not just a subtle background tint. */
+      /* :global is required: lockBtn is created with document.createElement
+         in the client script below (like the <option>s above), so it
+         never receives Astro's scoped-style attribute — a scoped rule
+         silently never matches it and it falls back to the browser's
+         bare default button chrome (which is what was actually
+         happening — not a specificity fight with .lab-panel button,
+         that rule wasn't matching either). */
+      :global(.lab-lock-btn) {
+        flex: none;
+        width: 2.1rem;
+        height: 2.1rem;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        border: 1px solid var(--danger);
+        background: rgba(255, 107, 94, 0.12);
+        color: var(--danger);
+        cursor: pointer;
+        transition: opacity 0.1s, background 0.1s, border-color 0.1s, color 0.1s;
+      }
+
+      :global(.lab-lock-btn svg) { width: 1.05rem; height: 1.05rem; }
+
+      :global(.lab-lock-btn:hover) { background: rgba(255, 107, 94, 0.12); filter: brightness(1.2); }
+
+      :global(.lab-lock-btn.locked) {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #06110c;
+        box-shadow: 0 0 0 2px rgba(94, 230, 176, 0.3);
+      }
+
+      :global(.lab-lock-btn.locked:hover) { background: var(--accent); filter: brightness(1.1); }
+
+      .lab-fallback {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: var(--font-body);
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .lab-fallback[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="gradient-canvas"></canvas>
+    <p id="lab-fallback" class="lab-fallback" hidden>
+      WebGL isn't available in this browser — the gradient lab needs it.
+    </p>
+
+    <div class="lab-panel">
+      <div class="lab-row">
+        <select id="style-select" aria-label="Gradient style"></select>
+      </div>
+      <div class="lab-row">
+        <button id="randomize-btn" type="button">Randomize</button>
+        <button id="save-btn" type="button">Save</button>
+      </div>
+      <div class="lab-row">
+        <button id="reset-btn" type="button">Reset to default</button>
+      </div>
+      <div id="lab-sliders" class="lab-sliders"></div>
+    </div>
+
+    <script>
+      import { GradientEngine, GRADIENT_STYLES, type NumericParamKey } from "../lib/gradient/engine";
+      import { PARAM_DEFS, type GradientParams } from "../lib/gradient/styles";
+
+      const canvas = document.getElementById("gradient-canvas") as HTMLCanvasElement;
+      const select = document.getElementById("style-select") as HTMLSelectElement;
+      const randomizeBtn = document.getElementById("randomize-btn") as HTMLButtonElement;
+      const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
+      const resetBtn = document.getElementById("reset-btn") as HTMLButtonElement;
+      const slidersEl = document.getElementById("lab-sliders") as HTMLDivElement;
+      const fallback = document.getElementById("lab-fallback") as HTMLParagraphElement;
+
+      for (const style of GRADIENT_STYLES) {
+        const option = document.createElement("option");
+        option.value = style.id;
+        option.textContent = style.label;
+        select.appendChild(option);
+      }
+
+      const LOCK_ICON_CLOSED =
+        '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+      const LOCK_ICON_OPEN =
+        '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.7"/></svg>';
+
+      const sliderInputs = new Map<string, HTMLInputElement>();
+      const sliderOutputs = new Map<string, HTMLOutputElement>();
+      const lockVisualSetters = new Map<NumericParamKey, (locked: boolean) => void>();
+
+      // Params the user has manually pinned — Randomize re-rolls
+      // everything else (including colors, which are never lockable)
+      // but leaves these exactly where they are. Locks are per style
+      // (like the slider values themselves): "Warp" means something
+      // different on every style, so locking it on Mesh shouldn't also
+      // lock it on Landscape.
+      const lockedKeys = new Set<NumericParamKey>(); // mutable, refilled by refreshLocksForStyle
+      let locksStyleId = "";
+
+      function locksStorageKey(styleId: string): string {
+        return `gradient-lab:locks:${styleId}`;
+      }
+
+      function loadLockedKeysForStyle(styleId: string): Set<NumericParamKey> {
+        try {
+          const raw = localStorage.getItem(locksStorageKey(styleId));
+          if (!raw) return new Set();
+          return new Set(JSON.parse(raw) as NumericParamKey[]);
+        } catch {
+          return new Set();
+        }
+      }
+
+      function persistLockedKeysForCurrentStyle(): void {
+        try {
+          localStorage.setItem(locksStorageKey(locksStyleId), JSON.stringify([...lockedKeys]));
+        } catch {
+          // ignore
+        }
+      }
+
+      function refreshLocksForStyle(styleId: string): void {
+        locksStyleId = styleId;
+        lockedKeys.clear();
+        for (const key of loadLockedKeysForStyle(styleId)) lockedKeys.add(key);
+        for (const def of PARAM_DEFS) {
+          lockVisualSetters.get(def.key)?.(lockedKeys.has(def.key));
+        }
+      }
+
+      for (const def of PARAM_DEFS) {
+        const row = document.createElement("div");
+        row.className = "lab-slider-row";
+
+        const label = document.createElement("label");
+        label.htmlFor = `param-${def.key}`;
+        const output = document.createElement("output");
+        output.id = `param-${def.key}-value`;
+        label.textContent = def.label + " ";
+        label.appendChild(output);
+
+        const track = document.createElement("div");
+        track.className = "lab-slider-track";
+
+        const input = document.createElement("input");
+        input.type = "range";
+        input.id = `param-${def.key}`;
+        input.min = String(def.min);
+        input.max = String(def.max);
+        input.step = String(def.step);
+
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = "lab-lock-btn";
+        lockBtn.title = "Lock this param against Randomize";
+        const applyLockVisual = (locked: boolean) => {
+          lockBtn.classList.toggle("locked", locked);
+          lockBtn.innerHTML = locked ? LOCK_ICON_CLOSED : LOCK_ICON_OPEN;
+          lockBtn.setAttribute("aria-pressed", String(locked));
+        };
+        applyLockVisual(false);
+        lockVisualSetters.set(def.key, applyLockVisual);
+        lockBtn.addEventListener("click", () => {
+          const key = def.key;
+          if (lockedKeys.has(key)) {
+            lockedKeys.delete(key);
+          } else {
+            lockedKeys.add(key);
+          }
+          applyLockVisual(lockedKeys.has(key));
+          persistLockedKeysForCurrentStyle();
+        });
+
+        track.appendChild(input);
+        track.appendChild(lockBtn);
+        row.appendChild(label);
+        row.appendChild(track);
+        slidersEl.appendChild(row);
+
+        sliderInputs.set(def.key, input);
+        sliderOutputs.set(def.key, output);
+      }
+
+      function syncSliders(params: GradientParams) {
+        for (const def of PARAM_DEFS) {
+          const value = params[def.key];
+          sliderInputs.get(def.key)!.value = String(value);
+          sliderOutputs.get(def.key)!.textContent = value.toFixed(2);
+        }
+      }
+
+      function downloadJson(filename: string, data: unknown) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      try {
+        const engine = new GradientEngine(canvas);
+        engine.start();
+        select.value = engine.getStyleId();
+        syncSliders(engine.getDisplayParams());
+        refreshLocksForStyle(engine.getStyleId());
+
+        select.addEventListener("change", () => {
+          engine.setStyle(select.value);
+          syncSliders(engine.getDisplayParams());
+          refreshLocksForStyle(select.value);
+        });
+
+        randomizeBtn.addEventListener("click", () => {
+          engine.randomize(lockedKeys);
+          syncSliders(engine.getTargetParams());
+        });
+
+        for (const def of PARAM_DEFS) {
+          const input = sliderInputs.get(def.key)!;
+          const output = sliderOutputs.get(def.key)!;
+          input.addEventListener("input", () => {
+            const value = parseFloat(input.value);
+            output.textContent = value.toFixed(2);
+            engine.setParam(def.key, value);
+          });
+        }
+
+        saveBtn.addEventListener("click", () => {
+          const params = engine.saveCurrentParams();
+          downloadJson(`${engine.getStyleId()}.json`, { styleId: engine.getStyleId(), ...params });
+          const original = saveBtn.textContent;
+          saveBtn.textContent = "Saved!";
+          setTimeout(() => { saveBtn.textContent = original; }, 1200);
+        });
+
+        resetBtn.addEventListener("click", () => {
+          engine.resetToDefault();
+          syncSliders(engine.getDisplayParams());
+        });
+
+        window.addEventListener("resize", () => engine.resize());
+      } catch (err) {
+        console.error(err);
+        canvas.hidden = true;
+        fallback.hidden = false;
+      }
+    </script>
+  </body>
+</html>
