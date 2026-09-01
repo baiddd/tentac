@@ -7,7 +7,8 @@ name: Fetch weekly issue (opens a PR for review)
 
 on:
   schedule:
-    - cron: "0 6 * * MON"   # Monday 06:00 UTC, covers the week that just closed
+    - cron: "17 6 * * MON"  # Monday ~06:17 UTC — off the exact hour so it isn't
+                             # queued behind every other repo's "0 6" cron jobs
   workflow_dispatch:
     inputs:
       week:
