@@ -3,18 +3,19 @@
 //
 // Rule: if `presets/issues/<week>.json` already exists, that file is the
 // issue's cover — forever, unchanged by any later edit to the generator or
-// to any style's randomize(). If it doesn't exist yet, one is generated
+// to any style's preset. If it doesn't exist yet, one is generated
 // deterministically (seeded from the week string, so the same week always
-// produces the same result even before the file exists) and written to
-// disk immediately, which is what makes it permanent: the next build finds
-// the file and just reads it. Once committed to git, that's the issue's
-// history — exactly like data/<week>.json.
+// produces the same result even before the file exists), picking only
+// among styles that have a committed preset (see generate() below), and
+// written to disk immediately, which is what makes it permanent: the next
+// build finds the file and just reads it. Once committed to git, that's
+// the issue's history — exactly like data/<week>.json.
 //
 // Runs server-side only (Astro frontmatter/build, Node has fs) — never
 // import this from a client <script>.
 import fs from "node:fs";
 import path from "node:path";
-import { GRADIENT_STYLES, withSeededRandom, withParamDefaults, type GradientParams } from "./styles";
+import { GRADIENT_STYLES, PRESETS, withParamDefaults, type GradientParams } from "./styles";
 
 // Resolved from the Astro project root (process.cwd() when `astro build`/
 // `astro dev` runs), not from import.meta.url — Vite bundles this module
@@ -40,12 +41,18 @@ function seedFromWeek(week: string): number {
   return h >>> 0;
 }
 
+// Only styles with a committed preset (web/src/lib/gradient/presets/<id>.json
+// — a hand-tuned look, see presets/README.md) are eligible for a new issue's
+// cover. A style with no preset only has its raw randomize() defaults, which
+// aren't vetted to look good, so it's excluded rather than risk an
+// undertuned animation landing on a real issue. The preset's exact params
+// are used as-is — the randomness is only in which eligible style gets
+// picked, not in re-randomizing an already-tuned look.
 function generate(week: string): IssueCover {
   const seed = seedFromWeek(week);
-  return withSeededRandom(seed, () => {
-    const style = GRADIENT_STYLES[seed % GRADIENT_STYLES.length];
-    return { styleId: style.id, params: style.randomize() };
-  });
+  const eligible = GRADIENT_STYLES.filter((style) => PRESETS[style.id]);
+  const style = eligible[seed % eligible.length];
+  return { styleId: style.id, params: PRESETS[style.id] };
 }
 
 export function getIssueCover(week: string): IssueCover {
