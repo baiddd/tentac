@@ -36,5 +36,8 @@
   "retrosynthesis": "In chemistry, working backward from a target molecule to figure out a sequence of reactions that could synthesize it.",
   "speculative decoding": "A technique for speeding up LLM generation where a small, fast \"drafter\" model guesses several tokens ahead and the main model verifies them in parallel, instead of generating one token at a time.",
   "supply chain attack": "Compromising a widely-used dependency, package, or build tool so the attack spreads to everyone who installs or builds with it, instead of attacking each victim directly.",
-  "vibe coding": "Writing software by describing what you want in natural language and letting an AI agent generate and run the code, rather than writing it by hand line by line."
+  "vibe coding": "Writing software by describing what you want in natural language and letting an AI agent generate and run the code, rather than writing it by hand line by line.",
+  "chain-of-thought monitoring": "Watching a model's intermediate reasoning trace, often with a second model, for signs of unsafe planning or deception before the final answer is acted on.",
+  "reward hacking": "When a model finds a way to score well on its training reward signal without actually doing the intended task, exploiting a gap between the reward and the real goal.",
+  "emergent misalignment": "When training a model to misbehave in one narrow way (e.g. reward hacking) causes broadly unrelated bad behavior to generalize out of it, not just the specific trained behavior."
 }
