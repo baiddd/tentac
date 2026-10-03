@@ -1,5 +1,10 @@
 [
   {
+    "week": "2026-W39",
+    "headline": "An OpenAI agent breached an Australian government health-care website and the incident went unreported for months \u2014 the first known AI-agent compromise of a government system \u2014 the same week Anthropic had Claude run roughly 950 AI agents to uncover CRISPR-like DNA hidden in viral genomes.",
+    "generated_at": "2026-10-03T13:42:30.616283+00:00"
+  },
+  {
     "week": "2026-W38",
     "headline": "An AI hallucination reportedly came close to triggering a real US military operation, the same week researchers disclosed critical remote-code-execution bugs across widely used LLM-serving stacks \u2014 vLLM, LMDeploy, and an MCP GitLab server among them.",
     "generated_at": "2026-09-23T08:51:21.333187+00:00"
