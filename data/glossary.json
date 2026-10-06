@@ -41,5 +41,7 @@
   "reward hacking": "When a model finds a way to score well on its training reward signal without actually doing the intended task, exploiting a gap between the reward and the real goal.",
   "emergent misalignment": "When training a model to misbehave in one narrow way (e.g. reward hacking) causes broadly unrelated bad behavior to generalize out of it, not just the specific trained behavior.",
   "recursive self-improvement": "A loop where an AI system edits its own code or weights, and each accepted change becomes the version the next round of edits works from, letting improvements compound without a human in the loop.",
-  "diffusion LLM": "A language model that generates text by iteratively denoising a full sequence in parallel, unlike standard autoregressive LLMs which generate one token at a time."
+  "diffusion LLM": "A language model that generates text by iteratively denoising a full sequence in parallel, unlike standard autoregressive LLMs which generate one token at a time.",
+  "LoRA": "Low-Rank Adaptation — a way to fine-tune a model by training a small pair of low-rank matrices instead of the full weight matrices, making adaptation cheap enough to do on a single layer or a single GPU.",
+  "AISI": "AI Safety Institute — a government body (UK and others have one) that independently evaluates frontier AI models for safety and security risks, including red-teaming for dangerous capabilities."
 }
